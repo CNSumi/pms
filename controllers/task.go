@@ -78,24 +78,19 @@ func (c *TaskController) NewTask() {
 
 // @router /updateConfig [post]
 func (c *TaskController) UpdateTask() {
-	t := &models.Task{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, t); err != nil {
+	t := []*models.Task{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &t); err != nil {
 		c.Resp.Code = models.ERR_CODE_BODY_DECODE_FAIL
 		c.Resp.Message = fmt.Sprintf("body decode fail: %+v", err)
 		return
 	}
 
-	if t.ID == 0 {
+	if len(t) == 0 {
 		c.Resp.Code = models.ERR_CODE_ARGS_MISS_REQUIRED
-		c.Resp.Message = fmt.Sprintf("missing pk(id)")
+		c.Resp.Message = fmt.Sprintf("update task.count == 0")
 		return
 	}
-
-	if err := models.UpdateConfig(t); err != nil {
-		c.Resp.Code = models.ERR_CODE_UNKNOWN_ERROR
-		c.Resp.Message = fmt.Sprintf("update config fail: %+v", err)
-		return
-	}
+	c.Resp.Data = models.UpdateConfig(t)
 }
 
 // @router /removeConfig [post]

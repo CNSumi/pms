@@ -98,14 +98,8 @@ func (t *Task) checkName() error {
 	if t.Name == "" {
 		return fmt.Errorf("配置名不能为空")
 	}
-	err := o.Read(t, "name")
-	if err != nil {
-		if err == orm.ErrNoRows {
-			return nil
-		}
-		return fmt.Errorf("未知错误: %+v", err)
-	}
-	return fmt.Errorf("此配置名已存在(%s)", t.Name)
+
+	return nil
 }
 
 func (t *Task) checkBitRateVA() error {
@@ -203,20 +197,47 @@ func AddConfig(t *Task) (int64, error) {
 	return id, nil
 }
 
-func UpdateConfig(t *Task) error {
-	if err := t.selfCheck(); err != nil {
-		return err
+type UpdateRet struct {
+	ID		int64	`json:"id"`
+	Code	int	`json:"code"`
+	Message	string	`json:"message"`
+}
+
+func UpdateConfig(t []*Task) []*UpdateRet {
+	ret := []*UpdateRet{}
+
+	for _, tmp := range t {
+		if tmp == nil || tmp.ID == 0 {
+			continue
+		}
+
+		code, message := updateSingle(tmp)
+
+		ret = append(ret, &UpdateRet{
+			ID: tmp.ID,
+			Code: code,
+			Message: message,
+		})
 	}
 
+	return ret
+}
+
+func updateSingle(t *Task) (int, string) {
+	if t == nil {
+		return -1, fmt.Sprintf("task is empty")
+	}
+	if err := t.selfCheck(); err != nil {
+		return -3, fmt.Sprintf("self check fail: %s", err.Error())
+	}
 	flag, err := o.Update(t)
 	if err != nil {
-		return err
+		return -4, fmt.Sprintf("exec update fail: %+v", err)
 	}
 	if flag != 1 {
-		return fmt.Errorf("error id(%d))", t.ID)
+		return -5, fmt.Sprintf("pk(%d) not exists", t.ID)
 	}
-
-	return nil
+	return 0, "ok"
 }
 
 func RemoveTask(id int64) error {
