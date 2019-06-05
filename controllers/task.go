@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	count_per_page = 20
+	count_per_page = 5
 )
 
 type TaskController struct {
@@ -17,12 +17,13 @@ type TaskController struct {
 // @router /listConfig [post]
 func (c *TaskController) List() {
 	t := &struct {
-		Page	uint32	`json:"page"`
-		Count	uint32	`json:"count"`
+		Page	int	`json:"page"`
 	}{}
 	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &t)
-	if t.Count == 0 {
-		t.Count = count_per_page
+	if t.Page < 0 {
+		c.Resp.Code = models.ERR_CODE_ARGS_CHECK_FAIL
+		c.Resp.Message = fmt.Sprintf("page cannot < 0")
+		return
 	}
 
 	tasks, err := models.ListTask()
@@ -31,11 +32,21 @@ func (c *TaskController) List() {
 		c.Resp.Message = fmt.Sprintf("query task fail: %+v", err)
 		return
 	}
-	hasMore := false
-	if uint32(len(tasks)) > (t.Page + 1) * t.Count {
-		hasMore = true
-		tasks = tasks[t.Page * t.Count: (t.Page + 1) * t.Count]
+	start := t.Page * count_per_page
+	end := start + count_per_page
+	if len(tasks) < start {
+		c.Resp.Code = models.ERR_CODE_ARGS_CHECK_FAIL
+		c.Resp.Message = fmt.Sprintf("err page, current max page: %d", len(tasks) / count_per_page)
+		return
 	}
+	hasMore := false
+	if len(tasks) > (t.Page + 1) * count_per_page {
+		hasMore = true
+	} else {
+		end = len(tasks)
+	}
+
+	tasks = tasks[start: end]
 
 	c.Resp.Data = &struct {
 		HasMore	bool	`json:"hasMore"`
