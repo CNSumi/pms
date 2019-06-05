@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/astaxie/beego/orm"
 	"strings"
-	"time"
 )
 
 var (
@@ -38,9 +37,6 @@ type Task struct {
 	ONVIF_pwd     string  `json:"onvif_pwd;omitempty" orm:"column(onvif_pwd)"`
 	Channel       *uint16 `json:"channel" orm:"column(channel);null;unique"`
 	IsONVIF       bool    `json:"-" orm:"column(is_onvif)"`
-
-	Created		time.Time	`json:"created" orm:"auto_now_add;type(datetime)"`
-	Updated		time.Time	`json:"updated" orm:"auto_now;type(datetime)"`
 }
 
 func ListTask() ([]*Task, error) {
