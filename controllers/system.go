@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"pms.cnsumi.com/models"
 )
 
@@ -24,11 +23,7 @@ func (c *SystemController) Network() {
 	c.Resp.Data = models.LocalNet()
 }
 
-// @router /rebootabc [post]
+// @router /reboot [post]
 func (c *SystemController) Reboot() {
-	err := models.Reboot()
-	if err != nil {
-		c.Resp.Code = models.ERR_CODE_CMD_EXEC_FAIL
-		c.Resp.Message = fmt.Sprintf("reboot fail: %+v", err)
-	}
+	//err := models.Reboot()
 }
