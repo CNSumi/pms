@@ -115,3 +115,16 @@ func Reboot() error {
 	log.Printf("reboot.out: %s\n", string(out))
 	return err
 }
+
+func SetNetwork(inet, mask, broadcast string) error {
+	if !isIPV4Addr(inet) {
+		return fmt.Errorf("not ipv4 addr: %s", inet)
+	}
+	if !isIPV4Addr(mask) {
+		return fmt.Errorf("not ipv4 addr: %s", mask)
+	}
+	if !isIPV4Addr(broadcast) {
+		return fmt.Errorf("not ipv4 addr: %s", broadcast)
+	}
+	return nil
+}
