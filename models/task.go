@@ -190,6 +190,10 @@ func AddConfig(t *Task) (int64, error) {
 		return 0, fmt.Errorf("add config fail: %+v", err)
 	}
 
+	if t.Channel != nil {
+		go startTask(t)
+	}
+
 	return id, nil
 }
 
