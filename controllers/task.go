@@ -32,6 +32,7 @@ func (c *TaskController) List() {
 		c.Resp.Message = fmt.Sprintf("query task fail: %+v", err)
 		return
 	}
+	count := len(tasks)
 	start := t.Page * count_per_page
 	end := start + count_per_page
 	if len(tasks) < start {
@@ -51,9 +52,11 @@ func (c *TaskController) List() {
 	c.Resp.Data = &struct {
 		HasMore	bool	`json:"hasMore"`
 		List	[]*models.Task	`json:"list"`
+		Count 	int	`json:"count"`
 	}{
 		HasMore: hasMore,
 		List: tasks,
+		Count: count,
 	}
 }
 

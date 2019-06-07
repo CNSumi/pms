@@ -247,9 +247,7 @@ func RemoveTask(id int64) error {
 	if err := o.Read(t, "id"); err != nil {
 		return fmt.Errorf("read config fail: %+v", err)
 	}
-	if t.Channel != nil {
-		return fmt.Errorf("cannot remove running config")
-	}
+
 	if _, err := o.Delete(t, "id"); err != nil {
 		return err
 	}
