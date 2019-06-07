@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 )
 /**
@@ -55,10 +56,12 @@ rtsp://127.0.0.1/1							目标rtsp地址,目标地址都是推到本机,本机�
  */
 
 func main() {
-	p_gpu := flag.Uint("gpu", 0, "gpu.no, load balance")
-	p_rand := flag.Uint("rand", 10, "rand of crash")
-	p_prefix := flag.String("prefix", "0", "prefix")
-	flag.Parse()
+	fs := flag.NewFlagSet("TNGVideoTool", flag.ContinueOnError)
+
+	p_gpu := fs.Uint("gpu", 0, "gpu.no, load balance")
+	p_rand := fs.Uint("rand", 10, "rand of crash")
+	p_prefix := fs.String("prefix", "0", "prefix")
+	fs.Parse(os.Args[1:])
 
 	prefix := *p_prefix
 	num := *p_rand
