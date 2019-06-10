@@ -6,3 +6,4 @@ exec/TNGVideoTool/TNGVideoTool
 exec/main.go
 pms.db
 exec/exec
+exec/getrtsp/getrtsp

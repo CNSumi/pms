@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -10,7 +9,7 @@ import (
 )
 
 var (
-	contentRegex = regexp.MustCompile(`addr: (.*)`)
+	getRTSPRegex = regexp.MustCompile(`exec success:(.*)`)
 )
 
 func isIPV4Addr(ip string) bool {
@@ -54,13 +53,12 @@ func GetRTSPAddress(host, user, password string) (string, error) {
 
 	content, _ := execCommand("getrtsp", host, user, password)
 	content = strings.TrimSpace(content)
-	matches := contentRegex.FindStringSubmatch(content)
-	log.Printf("matches: %+v", matches)
+	matches := getRTSPRegex.FindStringSubmatch(content)
 	if len(matches) == 2 {
 		return matches[1], nil
 	}
 
-	return content, fmt.Errorf("unknown error")
+	return content, fmt.Errorf("unknown error(%s)", content)
 }
 
 func execCommand(command string, args ...string) (string, error) {
