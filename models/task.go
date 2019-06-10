@@ -3,12 +3,14 @@ package models
 import (
 	"fmt"
 	"github.com/astaxie/beego/orm"
+	"log"
 	"strings"
 )
 
 var (
 	zero	= uint16(0)
 	qs_task orm.QuerySeter
+	qs_task_initAlreadyFlag = make(chan bool, 1)
 
 	encoder2profile = map[string][]string{
 		"H264": {"main", "baseline", "high"},
@@ -17,7 +19,10 @@ var (
 )
 
 func init() {
+	<- initDBFlag
+	close(initDBFlag)
 	qs_task = o.QueryTable("pms_task").OrderBy("id")
+	qs_task_initAlreadyFlag <- true
 }
 
 type Task struct {
@@ -28,8 +33,8 @@ type Task struct {
 	BitRateA      string  `json:"bitrate_a" orm:"column(bitrate_a)"`
 	FPS           *uint64 `json:"fps" orm:"column(fps)"`
 	GOP           *uint64 `json:"gop" orm:"column(gop)"`
-	Encoder       string  `json:"encoder" orm:"column(encoder)"`
-	Profile       string  `json:"profile" orm:"column(profile)"`
+	Encoder       string  `json:"encoder"`
+	Profile       string  `json:"profile"`
 	RTSPTransPort string  `json:"rtsp_transport" orm:"column(rtsp_transport)"`
 	RTSPAddr      string  `json:"rtsp_addr" orm:"column(rtsp_addr)"`
 	ONVIF_IP      string  `json:"onvif_ip;omitempty" orm:"column(onvif_ip)"`
@@ -113,6 +118,11 @@ func (t *Task) checkFPSAndGOP() error {
 }
 
 func (t *Task) checkEncoderAndProfile() error {
+	encoder2profile = map[string][]string{
+		"H264": {"main", "baseline", "high"},
+		"HEVC": {"main"},
+	}
+
 	if ps, ok := encoder2profile[t.Encoder]; ok {
 		for _, profile := range ps {
 			if profile == t.Profile {
@@ -191,7 +201,9 @@ func AddConfig(t *Task) (int64, error) {
 	}
 
 	if t.Channel != nil {
-		go startTask(t)
+		if err := startTask(t); err != nil {
+			log.Printf("start process fail: %+v", err)
+		}
 	}
 
 	return id, nil
@@ -225,7 +237,7 @@ func UpdateConfig(t []*Task) []*UpdateRet {
 
 func updateSingle(t *Task) (int, string) {
 	if t == nil {
-		return -1, fmt.Sprintf("task is empty")
+		return -1, fmt.Sprintf("Task is empty")
 	}
 	if err := t.selfCheck(); err != nil {
 		return -3, fmt.Sprintf("self check fail: %s", err.Error())
@@ -248,8 +260,13 @@ func RemoveTask(id int64) error {
 		return fmt.Errorf("read config fail: %+v", err)
 	}
 
+	if err := stopTask(t); err != nil {
+		log.Printf("%d stop fail: %+v", t.Channel, err)
+	}
+
 	if _, err := o.Delete(t, "id"); err != nil {
 		return err
 	}
+
 	return nil
 }

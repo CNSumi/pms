@@ -68,4 +68,3 @@ func execCommand(command string, args ...string) (string, error) {
 	b, err := cmd.Output()
 	return string(b), err
 }
-
