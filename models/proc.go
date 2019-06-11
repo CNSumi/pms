@@ -42,6 +42,8 @@ type Proc struct {
 	OnvifPid	 uint32
 	Decoder			string
 
+	OnvifArgs	[]string
+
 	stopSignal   chan bool
 	rebootSignal chan bool
 	isBreak      bool
@@ -145,27 +147,12 @@ func init() {
 		}
 		for _, t := range tasks {
 			if err := startTask(t); err != nil {
-				log.Fatalf("start proce fail: %+v", err)
+				log.Printf("start proce fail: %+v", err)
 			}
 		}
 	}()
 }
-/**
--hwaccel cuvid
--vcodec hevc_cuvid
--hwaccel_device 0
--GPU 0
--i rtsp://admin:admin12345@192.168.1.12
--f rtsp
--rtsp_transport tcp
--g 250
--b:v 500k
--zerolatency 1
--profile:v high
--vcodec h264_nvenc
--GPU 0
-rtsp://192.168.1.227/main
- */
+
 func makeArgsTrans(p *Proc) []string {
 	t := p.Task
 
@@ -207,4 +194,30 @@ func getStreamType(addr string) (string, error) {
 	}
 	log.Printf("content: %s", content)
 	return "", fmt.Errorf("get StreamType fail")
+}
+
+func (p *Proc) startOnvif() {
+	if len(p.OnvifArgs) == 0 {
+		p.makeOnvifArgs()
+	}
+
+}
+
+func (p *Proc) makeOnvifArgs() {
+	t := p.Task
+
+	num := 9000 + *t.Channel
+	ret := []string{}
+	ret = append(ret, "--ifs", localNet.Name)
+	ret = append(ret, "--port", fmt.Sprintf("%d", num))
+	ret = append(ret, "--pid_file", fmt.Sprintf("/tmp/%d.pid", num))
+	ret = append(ret, "--scope", "onvif://www.onvif.org/name/RTSPSever")
+	ret = append(ret, "--scope", "onvif://www.onvif.org/Profile/S")
+	ret = append(ret, "--name", "RTSPSever")
+	ret = append(ret, "--width", "1920")
+	ret = append(ret, "--height", "1080")
+	ret = append(ret, "--url", t.RTSPAddr)
+	ret = append(ret, "--type", "JPEG")
+
+	p.OnvifArgs = ret
 }

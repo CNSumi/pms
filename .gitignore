@@ -8,3 +8,4 @@ pms.db
 exec/exec
 exec/getrtsp/getrtsp
 exec/getStreamType/getStreamType
+exec/onvif/onvif_srvd
