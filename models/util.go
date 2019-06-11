@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 
 var (
 	getRTSPRegex = regexp.MustCompile(`exec success:(.*)`)
+	getStreamTypeRegex = regexp.MustCompile(`stream type (h\w{3})`)
 )
 
 func isIPV4Addr(ip string) bool {
@@ -65,4 +67,15 @@ func execCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 	b, err := cmd.Output()
 	return string(b), err
+}
+
+func isFile(name string) (bool, error) {
+	stat, err := os.Stat(name)
+	if err != nil {
+		return false, err
+	}
+	if stat.IsDir() {
+		return false, fmt.Errorf("is dir")
+	}
+	return true, nil
 }
