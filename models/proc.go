@@ -39,10 +39,13 @@ type Proc struct {
 	RebootCount  uint64
 	GPU          uint8
 	Pid          uint32
+	OnvifPid	 uint32
+	Decoder			string
 
 	stopSignal   chan bool
 	rebootSignal chan bool
 	isBreak      bool
+
 }
 
 func nextGPU() uint8 {
@@ -77,15 +80,23 @@ func startTask(t *Task) error {
 			log.SetPrefix(fmt.Sprintf("[%d-%d-%d,%d:%s]", t.ID, *t.Channel, proc.GPU, proc.RebootCount, t.Name))
 			if proc.isBreak {
 				procs[*proc.Task.Channel] = nil
-				log.Printf("exit by break signal")
+				log.Printf("exit by stop(break) signal")
 				break
 			}
 
+			decoder, err := getStreamType(t.RTSPAddr)
+			if err != nil {
+				log.Printf("getStreamType err: %+v", err)
+				time.Sleep(time.Second)
+				continue
+			}
+			proc.Decoder = decoder
+
 			proc.RebootCount++
-			args := makeArgs(proc)
+			args := makeArgsTrans(proc)
 			cmd := exec.Command(args[0], args[1:]...)
 
-			err := cmd.Start()
+			err = cmd.Start()
 			if err != nil {
 				log.Printf("cmd start fail: %+v", err)
 				time.Sleep(time.Second * 3)
@@ -155,19 +166,19 @@ func init() {
 -GPU 0
 rtsp://192.168.1.227/main
  */
-func makeArgs(p *Proc) []string {
+func makeArgsTrans(p *Proc) []string {
 	t := p.Task
 
 	ret := []string{}
 	ret = append(ret, "TNGVideoTool")
 	ret = append(ret, "--prefix", t.Name)
-	ret = append(ret, "--rand", "5")
+	ret = append(ret, "--rand", "50")
 	ret = append(ret, "-hide_banner")
 	ret = append(ret, "-loglevel", "warning")
 	ret = append(ret, "-stimeout", "3000000")
 	ret = append(ret, "-rtsp_transport", t.RTSPTransPort)
 	ret = append(ret, "-hwaccel", "cuvid")
-	ret = append(ret, "-vcodec", t.Encoder)
+	ret = append(ret, "-vcodec", fmt.Sprintf("%s_cuvid", p.Decoder))
 	ret = append(ret, "-hwaccel_device", fmt.Sprintf("%d", p.GPU))
 	ret = append(ret, "-GPU", fmt.Sprintf("%d", p.GPU))
 	ret = append(ret, "-i", t.RTSPAddr)
@@ -176,10 +187,24 @@ func makeArgs(p *Proc) []string {
 	ret = append(ret, "-g", fmt.Sprintf("%d", *t.GOP))
 	ret = append(ret, "-b:v", t.BitRateV)
 	ret = append(ret, "-zerolatency", "1")
+	ret = append(ret, "-vcodec", fmt.Sprintf("%s_nevnc", t.Encoder))
 	ret = append(ret, "-profile:v", t.Profile)
-	ret = append(ret, "-vcodec", t.Encoder)
 	ret = append(ret, "-GPU", fmt.Sprintf("%d", p.GPU))
-	ret = append(ret, "-rtsp", t.RTSPAddr)
+	ret = append(ret, "-acodec", "aac")
+	ret = append(ret, "-b:a", t.BitRateA)
+	ret = append(ret, t.RTSPAddr)
 
 	return ret
+}
+
+func getStreamType(addr string) (string, error) {
+	content, _ := execCommand("getStreamType", "--rtsp", addr)
+	matcher := getStreamTypeRegex.FindStringSubmatch(content)
+	if len(matcher) == 2 {
+		if matcher[1] == "hevc" || matcher[1] == "h264" {
+			return matcher[1], nil
+		}
+	}
+	log.Printf("content: %s", content)
+	return "", fmt.Errorf("get StreamType fail")
 }
