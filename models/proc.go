@@ -46,6 +46,7 @@ type Proc struct {
 
 	stopSignal   chan bool
 	rebootSignal chan bool
+	onvifStopSignal chan bool
 	isBreak      bool
 
 }
@@ -200,7 +201,6 @@ func (p *Proc) startOnvif() {
 	if len(p.OnvifArgs) == 0 {
 		p.makeOnvifArgs()
 	}
-
 }
 
 func (p *Proc) makeOnvifArgs() {
