@@ -1,9 +1,12 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"syscall"
 	"time"
 )
 
@@ -13,42 +16,24 @@ const (
 
 var (
 	procs = [80]*Proc{}
-	gpus = [GPU_COUNT]uint8{}
+	gpus  = [GPU_COUNT]uint8{}
 )
 
-func init() {
-	go func() {
-		for {
-			time.Sleep(time.Second * 10)
-			ret := fmt.Sprintf("\n----------------------GPU---------------------\n")
-			for _, count := range gpus {
-				ret += fmt.Sprintf("|")
-				for i := uint8(0); i < count; i++ {
-					ret += "*"
-				}
-				ret += "\n"
-			}
-			ret += fmt.Sprintf("----------------------GPU---------------------")
-			log.Printf("%s", ret)
-		}
-	}()
-}
-
 type Proc struct {
-	Task         *Task
-	RebootCount  uint64
-	GPU          uint8
-	Pid          uint32
-	OnvifPid	 uint32
-	Decoder			string
+	Task    *Task
+	GPU     uint8
+	Decoder string
 
-	OnvifArgs	[]string
+	OnvifArgs []string
+	OnvifPid  int
 
-	stopSignal   chan bool
-	rebootSignal chan bool
-	onvifStopSignal chan bool
-	isBreak      bool
+	TNGVideoToolArgs        []string
+	TNGVideoToolPid         int
+	TNGVideoToolRebootCount int
 
+	ctx    context.Context
+	cancel context.CancelFunc
+	logger *log.Logger
 }
 
 func nextGPU() uint8 {
@@ -62,62 +47,73 @@ func nextGPU() uint8 {
 	return index
 }
 
+func (p *Proc) startTNGVideoTool() {
+	t := p.Task
+	for {
+		decoder, err := getStreamType(t.RTSPAddr)
+		if err != nil {
+			p.logger.Printf("getStreamType err: %+v, waiting 3 seconds to restart", err)
+			time.Sleep(time.Second * 3)
+			continue
+		}
+		p.Decoder = decoder
+		p.makeTNGVideoToolArgs()
+		p.TNGVideoToolRebootCount++
+
+		cmd := exec.Command(p.TNGVideoToolArgs[0], p.TNGVideoToolArgs[1:]...)
+		if err := cmd.Start(); err != nil {
+			p.logger.Printf("start TNGVideoTool fail: %+v, waiting 3 seconds to restart", err)
+			time.Sleep(time.Second * 3)
+			continue
+		}
+		p.TNGVideoToolPid = cmd.Process.Pid
+
+		_, _ = cmd.Process.Wait()
+		p.logger.Printf("TNGVideoTool crash, waiting 3 seconds to reboot or exit")
+		select {
+		case <-p.ctx.Done():
+			return
+		case <-time.Tick(time.Second * 3):
+
+		}
+	}
+}
+
 func startTask(t *Task) error {
 	if t == nil || t.Channel == nil || *t.Channel <= 0 || *t.Channel >= 80 {
 		return fmt.Errorf("empty Task")
 	}
 
 	if procs[*t.Channel] != nil {
-		return fmt.Errorf("Task already running")
+		return fmt.Errorf("task already running")
 	}
 
 	proc := &Proc{}
 	proc.Task = t
-	proc.stopSignal = make(chan bool, 1)
-	proc.rebootSignal = make(chan bool, 1)
 	proc.GPU = nextGPU()
+	proc.logger = log.New(os.Stdout, fmt.Sprintf("[id: %d, channel: %d, gpu: %d, name: %s]", t.ID, *t.Channel, proc.GPU, t.Name), log.Ldate|log.Ltime|log.Lshortfile)
+	proc.ctx, proc.cancel = context.WithCancel(context.Background())
 	procs[*t.Channel] = proc
 
+	go detail(*t.Channel)
+
+	go proc.startOnvif()
+
+	go proc.startTNGVideoTool()
+
 	go func() {
-		for {
-			log.SetPrefix(fmt.Sprintf("[%d-%d-%d,%d:%s]", t.ID, *t.Channel, proc.GPU, proc.RebootCount, t.Name))
-			if proc.isBreak {
-				procs[*proc.Task.Channel] = nil
-				log.Printf("exit by stop(break) signal")
-				break
+		select {
+		case <-proc.ctx.Done():
+			if err := syscall.Kill(proc.TNGVideoToolPid, syscall.SIGKILL); err != nil {
+				proc.logger.Printf("kill TNGVideoTool fail: %+v", err)
+			} else {
+				proc.logger.Printf("kill TNGVideoTool success, cherrs")
 			}
 
-			decoder, err := getStreamType(t.RTSPAddr)
-			if err != nil {
-				log.Printf("getStreamType err: %+v", err)
-				time.Sleep(time.Second)
-				continue
-			}
-			proc.Decoder = decoder
-
-			proc.RebootCount++
-			args := makeArgsTrans(proc)
-			cmd := exec.Command(args[0], args[1:]...)
-
-			err = cmd.Start()
-			if err != nil {
-				log.Printf("cmd start fail: %+v", err)
-				time.Sleep(time.Second * 3)
-				continue
-			}
-			log.Printf("running at Pid: %d", cmd.Process.Pid)
-
-			go func() {
-				_, _ = cmd.Process.Wait()
-				proc.rebootSignal <- true
-			}()
-
-			select {
-			case <- proc.stopSignal:
-				proc.isBreak = true
-				log.Printf("set stop signal")
-			case <- proc.rebootSignal:
-				log.Printf("reboot by crash")
+			if err := syscall.Kill(proc.OnvifPid, syscall.SIGKILL); err != nil {
+				proc.logger.Printf("kill onvif fail: %+v", err)
+			} else {
+				proc.logger.Printf("kill onvif success, cherrs")
 			}
 		}
 	}()
@@ -133,14 +129,15 @@ func stopTask(t *Task) error {
 	if proc == nil || proc.Task == nil || *proc.Task.Channel != *t.Channel {
 		return fmt.Errorf("stop err")
 	}
-	procs[*t.Channel].stopSignal <- true
+	proc.cancel()
 	gpus[proc.GPU]--
+	procs[*t.Channel] = nil
 	return nil
 }
 
 func init() {
 	go func() {
-		<- qs_task_initAlreadyFlag
+		<-qs_task_initAlreadyFlag
 		log.Printf("received db init already")
 		tasks, err := ListTask()
 		if err != nil {
@@ -154,13 +151,13 @@ func init() {
 	}()
 }
 
-func makeArgsTrans(p *Proc) []string {
+func (p *Proc) makeTNGVideoToolArgs() {
 	t := p.Task
 
 	ret := []string{}
 	ret = append(ret, "TNGVideoTool")
 	ret = append(ret, "--prefix", t.Name)
-	ret = append(ret, "--rand", "50")
+	ret = append(ret, "--rand", "100000")
 	ret = append(ret, "-hide_banner")
 	ret = append(ret, "-loglevel", "warning")
 	ret = append(ret, "-stimeout", "3000000")
@@ -182,7 +179,7 @@ func makeArgsTrans(p *Proc) []string {
 	ret = append(ret, "-b:a", t.BitRateA)
 	ret = append(ret, t.RTSPAddr)
 
-	return ret
+	p.TNGVideoToolArgs = ret
 }
 
 func getStreamType(addr string) (string, error) {
@@ -201,6 +198,17 @@ func (p *Proc) startOnvif() {
 	if len(p.OnvifArgs) == 0 {
 		p.makeOnvifArgs()
 	}
+
+	cmd := exec.Command(p.OnvifArgs[0], p.OnvifArgs[1:]...)
+	if err := cmd.Start(); err != nil {
+		p.logger.Printf("start onvif fail, %+v, reboot", err)
+		time.Sleep(time.Second * 3)
+		return
+	}
+
+	p.OnvifPid = cmd.Process.Pid
+
+	_, _ = cmd.Process.Wait()
 }
 
 func (p *Proc) makeOnvifArgs() {
@@ -208,6 +216,7 @@ func (p *Proc) makeOnvifArgs() {
 
 	num := 9000 + *t.Channel
 	ret := []string{}
+	ret = append(ret, "onvif_srvd")
 	ret = append(ret, "--ifs", localNet.Name)
 	ret = append(ret, "--port", fmt.Sprintf("%d", num))
 	ret = append(ret, "--pid_file", fmt.Sprintf("/tmp/%d.pid", num))
@@ -220,4 +229,29 @@ func (p *Proc) makeOnvifArgs() {
 	ret = append(ret, "--type", "JPEG")
 
 	p.OnvifArgs = ret
+}
+
+func detail(channel uint16) {
+	tick := time.NewTicker(time.Second * 10)
+	for {
+		p := procs[channel]
+		if p == nil {
+			log.Printf("channel: %d 's detail exit by proc is nil", channel)
+			return
+		}
+		logger := p.logger
+		if logger == nil {
+			log.Printf("channel: %d 's detail exit by proc logger is nil")
+			return
+		}
+
+		select {
+		case <-p.ctx.Done():
+			p.logger.Printf("log stop by cancel")
+			return
+		case <-tick.C:
+			p.logger.Printf("[onvif]. pid: %d", p.OnvifPid)
+			p.logger.Printf("[TNGVideoTool]. [%d]pid: %d", p.TNGVideoToolRebootCount, p.TNGVideoToolPid)
+		}
+	}
 }
