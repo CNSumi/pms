@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/astaxie/beego/orm"
 	"log"
-	"strings"
 )
 
 var (
@@ -149,24 +148,11 @@ func (t *Task) checkRTSPAddr() error {
 }
 
 func (t *Task) checkONVIF() error {
-	if t.ONVIF_IP == "" && t.ONVIF_user == "" && t.ONVIF_pwd == "" {
-		return nil
+	if t.ONVIF_IP == "" || t.ONVIF_user == "" || t.ONVIF_pwd == "" {
+
 	}
 	t.IsONVIF = true
 
-	if !isIPV4Addr(t.ONVIF_IP) {
-		return fmt.Errorf("非法ONVIF_IP(%s)", t.ONVIF_IP)
-	}
-	if t.ONVIF_user == "" {
-		return fmt.Errorf("ONVIF_USER不能为空(%s)", t.ONVIF_user)
-	}
-	if t.ONVIF_pwd == "" {
-		return fmt.Errorf("ONVIF_PWD不能为空(%s)", t.ONVIF_pwd)
-	}
-
-	if strings.Index(t.RTSPAddr, fmt.Sprintf("rtsp://%s:%s@%s", t.ONVIF_user, t.ONVIF_pwd, t.ONVIF_IP)) != 0 {
-		return fmt.Errorf("onvif配置与rtsp地址不符")
-	}
 	return nil
 }
 
@@ -249,6 +235,12 @@ func updateSingle(t *Task) (int, string) {
 	if flag != 1 {
 		return -5, fmt.Sprintf("pk(%d) not exists", t.ID)
 	}
+
+	if err := startTask(t); err != nil {
+		log.Printf("start task tail: %+v", err)
+	}
+
+
 	return 0, "ok"
 }
 

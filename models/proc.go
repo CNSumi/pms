@@ -52,8 +52,13 @@ func (p *Proc) startTNGVideoTool() {
 	for {
 		decoder, err := getStreamType(t.RTSPAddr)
 		if err != nil {
-			p.logger.Printf("getStreamType err: %+v, waiting 3 seconds to restart", err)
-			time.Sleep(time.Second * 3)
+			p.logger.Printf("getStreamType err: %+v, waiting 3 seconds to restart or return", err)
+			tick := time.NewTicker(time.Second * 3)
+			select {
+			case <-p.ctx.Done():
+				return
+			case <-tick.C:
+			}
 			continue
 		}
 		p.Decoder = decoder
@@ -104,16 +109,12 @@ func startTask(t *Task) error {
 	go func() {
 		select {
 		case <-proc.ctx.Done():
-			if err := syscall.Kill(proc.TNGVideoToolPid, syscall.SIGKILL); err != nil {
-				proc.logger.Printf("kill TNGVideoTool fail: %+v", err)
-			} else {
-				proc.logger.Printf("kill TNGVideoTool success, cherrs")
+			if err := kill(proc.OnvifPid, "onvif"); err != nil {
+				proc.logger.Printf("kill onvif(%d) fail", proc.OnvifPid)
 			}
 
-			if err := syscall.Kill(proc.OnvifPid, syscall.SIGKILL); err != nil {
-				proc.logger.Printf("kill onvif fail: %+v", err)
-			} else {
-				proc.logger.Printf("kill onvif success, cherrs")
+			if err := kill(proc.TNGVideoToolPid, "onvif"); err != nil {
+				proc.logger.Printf("kill TNGVideoToolPid(%d) fail", proc.TNGVideoToolPid)
 			}
 		}
 	}()
@@ -183,7 +184,8 @@ func (p *Proc) makeTNGVideoToolArgs() {
 }
 
 func getStreamType(addr string) (string, error) {
-	content, _ := execCommand("getStreamType", "--rtsp", addr)
+	content, _ := execCommand("getStreamType", addr)
+	log.Printf("addr: %s", addr)
 	matcher := getStreamTypeRegex.FindStringSubmatch(content)
 	if len(matcher) == 2 {
 		if matcher[1] == "hevc" || matcher[1] == "h264" {
@@ -195,6 +197,11 @@ func getStreamType(addr string) (string, error) {
 }
 
 func (p *Proc) startOnvif() {
+	if !p.Task.IsONVIF {
+		p.logger.Printf("not onvif proc, return")
+		return
+	}
+
 	if len(p.OnvifArgs) == 0 {
 		p.makeOnvifArgs()
 	}
@@ -241,7 +248,7 @@ func detail(channel uint16) {
 		}
 		logger := p.logger
 		if logger == nil {
-			log.Printf("channel: %d 's detail exit by proc logger is nil")
+			log.Printf("channel: %d 's detail exit by proc logger is nil", channel)
 			return
 		}
 
@@ -254,4 +261,15 @@ func detail(channel uint16) {
 			p.logger.Printf("[TNGVideoTool]. [%d]pid: %d", p.TNGVideoToolRebootCount, p.TNGVideoToolPid)
 		}
 	}
+}
+
+func kill(pid int, name string) error {
+	if pid == 0	{
+		return fmt.Errorf("%s(%d) not running", name, pid)
+	}
+
+	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil {
+		return fmt.Errorf("kill %s(%d) fail: %+v", name, pid, err)
+	}
+	return nil
 }
