@@ -9,3 +9,5 @@ exec/exec
 exec/getrtsp/getrtsp
 exec/getStreamType/getStreamType
 exec/onvif/onvif_srvd
+go.mod
+go.sum
