@@ -185,13 +185,7 @@ func AddConfig(t *Task) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("add config fail: %+v", err)
 	}
-
-	log.Printf("channel: %+v, is need running: %+v", t.Channel, t.Channel != nil)
-	if t.Channel != nil {
-		if err := startTask(t); err != nil {
-			log.Printf("start process fail: %+v", err)
-		}
-	}
+	// new config never start, because channel is 0(close)
 
 	return id, nil
 }
