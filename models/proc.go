@@ -17,6 +17,7 @@ const (
 var (
 	procs = [80]*Proc{}
 	gpus  = [GPU_COUNT]uint8{}
+	clearOnvifFlag = make(chan bool, 1)
 )
 
 type Proc struct {
@@ -109,8 +110,8 @@ func startTask(t *Task) error {
 	go func() {
 		select {
 		case <-proc.ctx.Done():
-			if err := kill(proc.OnvifPid, "onvif"); err != nil {
-				proc.logger.Printf("kill onvif(%d) fail", proc.OnvifPid)
+			if err := killOnvif(*proc.Task.Channel); err != nil {
+				proc.logger.Printf("stop onvif fail: %+v", err)
 			}
 
 			if err := kill(proc.TNGVideoToolPid, "onvif"); err != nil {
@@ -137,6 +138,10 @@ func stopTask(t *Task) error {
 }
 
 func init() {
+	for i := uint16(1); i <= 80; i++ {
+		killOnvif(i)
+	}
+
 	go func() {
 		<-qs_task_initAlreadyFlag
 		log.Printf("received db init already")
@@ -272,4 +277,12 @@ func kill(pid int, name string) error {
 		return fmt.Errorf("kill %s(%d) fail: %+v", name, pid, err)
 	}
 	return nil
+}
+
+func killOnvif(channel uint16) error {
+	text := fmt.Sprintf("kill -9 `cat /tmp/%d.pid`", channel + 9000)
+	log.Printf("stop onvif(%d), cmd: %s", channel, text)
+
+	cmd := exec.Command("/bin/sh", "-c", text)
+	return cmd.Start()
 }
