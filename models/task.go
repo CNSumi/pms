@@ -149,7 +149,7 @@ func (t *Task) checkRTSPAddr() error {
 
 func (t *Task) checkONVIF() error {
 	if t.ONVIF_IP == "" || t.ONVIF_user == "" || t.ONVIF_pwd == "" {
-
+		return nil
 	}
 	t.IsONVIF = true
 
@@ -186,6 +186,7 @@ func AddConfig(t *Task) (int64, error) {
 		return 0, fmt.Errorf("add config fail: %+v", err)
 	}
 
+	log.Printf("channel: %+v, is need running: %+v", t.Channel, t.Channel != nil)
 	if t.Channel != nil {
 		if err := startTask(t); err != nil {
 			log.Printf("start process fail: %+v", err)

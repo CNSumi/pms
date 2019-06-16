@@ -26,7 +26,7 @@ type Proc struct {
 	Decoder string
 
 	OnvifArgs []string
-	OnvifPid  int
+	OnvifPidName  string
 
 	TNGVideoToolArgs        []string
 	TNGVideoToolPid         int
@@ -218,9 +218,7 @@ func (p *Proc) startOnvif() {
 		return
 	}
 
-	p.OnvifPid = cmd.Process.Pid
-
-	_, _ = cmd.Process.Wait()
+	p.OnvifPidName = fmt.Sprintf("/tmp/%d.pid", *p.Task.Channel)
 }
 
 func (p *Proc) makeOnvifArgs() {
@@ -262,7 +260,9 @@ func detail(channel uint16) {
 			p.logger.Printf("log stop by cancel")
 			return
 		case <-tick.C:
-			p.logger.Printf("[onvif]. pid: %d", p.OnvifPid)
+			onvifPid, _ := execCommand("cat", p.OnvifPidName)
+
+			p.logger.Printf("[onvif]. file: %s, pid: %s", p.OnvifPidName, onvifPid)
 			p.logger.Printf("[TNGVideoTool]. [%d]pid: %d", p.TNGVideoToolRebootCount, p.TNGVideoToolPid)
 		}
 	}
