@@ -93,7 +93,15 @@ func (c *TaskController) UpdateTask() {
 		c.Resp.Message = fmt.Sprintf("update task.count == 0")
 		return
 	}
-	c.Resp.Data = models.UpdateConfig(t)
+
+	ret := []*models.UpdateRet{}
+	for _, t := range t {
+		sub := models.UpdateConfig(t)
+		if sub != nil {
+			ret = append(ret, sub)
+		}
+	}
+	c.Resp.Data = ret
 }
 
 // @router /removeConfig [post]

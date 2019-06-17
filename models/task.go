@@ -196,47 +196,67 @@ type UpdateRet struct {
 	Message	string	`json:"message"`
 }
 
-func UpdateConfig(t []*Task) []*UpdateRet {
-	ret := []*UpdateRet{}
+func diff(old, new *Task) bool {
+	if old.Name != new.Name {return true}
+	if old.BitRateA != new.BitRateA {return true}
+	if old.BitRateV != new.BitRateV {return  true}
+	if old.FPS != new.FPS {return true}
+	if old.GOP != new.GOP {return true}
+	if old.Encoder != new.Encoder {return true}
+	if old.Profile != new.Profile {return  true}
+	if old.RTSPTransPort != new.RTSPTransPort {return  true}
+	if old.RTSPAddr != new.RTSPAddr {return true}
+	if old.ONVIF_IP != new.ONVIF_IP {return true}
+	if old.ONVIF_user != new.ONVIF_user {return true}
+	if old.ONVIF_pwd != new.ONVIF_pwd {return true}
+	if old.Channel != new.Channel {return true}
 
-	for _, tmp := range t {
-		if tmp == nil || tmp.ID == 0 {
-			continue
-		}
-
-		code, message := updateSingle(tmp)
-
-		ret = append(ret, &UpdateRet{
-			ID: tmp.ID,
-			Code: code,
-			Message: message,
-		})
-	}
-
-	return ret
+	return false
 }
 
-func updateSingle(t *Task) (int, string) {
-	if t == nil {
-		return -1, fmt.Sprintf("Task is empty")
-	}
-	if err := t.selfCheck(); err != nil {
-		return -3, fmt.Sprintf("self check fail: %s", err.Error())
-	}
-	flag, err := o.Update(t)
-	if err != nil {
-		return -4, fmt.Sprintf("exec update fail: %+v", err)
-	}
-	if flag != 1 {
-		return -5, fmt.Sprintf("pk(%d) not exists", t.ID)
+func UpdateConfig(newTask *Task) (ret *UpdateRet) {
+	if newTask == nil {return nil}
+	if newTask.ID == 0 {return nil}
+
+	ret = &UpdateRet{
+		ID: newTask.ID,
 	}
 
-	if err := startTask(t); err != nil {
+	oldTask := &Task{
+		ID: newTask.ID,
+	}
+	if err := o.Read(oldTask, "id"); err != nil {
+		ret.Code = -1
+		ret.Message = fmt.Sprintf("read old config fail: %+v", err)
+		return
+	}
+
+	if isNeed := diff(oldTask, newTask); !isNeed {
+		ret.Code = -2
+		ret.Message = fmt.Sprintf("no difference")
+		return
+	}
+
+	if err := newTask.selfCheck(); err != nil {
+		ret.Code = -2
+		ret.Message = fmt.Sprintf("self check fail: %+v", err)
+		return
+	}
+	flag, err := o.Update(newTask)
+	if err != nil || flag != 1{
+		ret.Code = -3
+		ret.Message = fmt.Sprintf("exec update fail: %+v", err)
+		return
+	}
+
+	if err := stopTask(oldTask); err != nil {
+		log.Printf("[id: %d, channel: %+v]stop task fail: %+v", oldTask.ID, oldTask.Channel, err)
+	}
+
+	if err := startTask(newTask); err != nil {
 		log.Printf("start task tail: %+v", err)
 	}
-
-
-	return 0, "ok"
+	return
 }
 
 func RemoveTask(id int64) error {

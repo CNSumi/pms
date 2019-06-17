@@ -218,7 +218,7 @@ func (p *Proc) startOnvif() {
 		return
 	}
 
-	p.OnvifPidName = fmt.Sprintf("/tmp/%d.pid", *p.Task.Channel)
+	p.OnvifPidName = fmt.Sprintf("/tmp/%d.pid", *p.Task.Channel + 9000)
 }
 
 func (p *Proc) makeOnvifArgs() {
@@ -260,9 +260,13 @@ func detail(channel uint16) {
 			p.logger.Printf("log stop by cancel")
 			return
 		case <-tick.C:
-			onvifPid, _ := execCommand("cat", p.OnvifPidName)
+			if p.OnvifPidName != "" {
+				onvifPid, _ := execCommand("cat", p.OnvifPidName)
+				p.logger.Printf("[onvif]. file: %s, pid: %s", p.OnvifPidName, onvifPid)
+			} else {
+				p.logger.Printf("not onvif process, not running")
+			}
 
-			p.logger.Printf("[onvif]. file: %s, pid: %s", p.OnvifPidName, onvifPid)
 			p.logger.Printf("[TNGVideoTool]. [%d]pid: %d", p.TNGVideoToolRebootCount, p.TNGVideoToolPid)
 		}
 	}
