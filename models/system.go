@@ -39,7 +39,7 @@ type SystemStat struct {
 	DownFlow   float64 `json:"downflow"`
 }
 
-func init() {
+func initSystem() {
 	if err := initLocalNet(); err != nil {
 		//log.Fatalf("initLocalNet fail: %+v", err)
 	}

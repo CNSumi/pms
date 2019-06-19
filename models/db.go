@@ -6,12 +6,7 @@ import (
 	"log"
 )
 
-func init() {
-	initDB()
-}
-
 var (
-	initDBFlag = make(chan bool, 1)
 	o orm.Ormer
 )
 
@@ -37,8 +32,6 @@ func initDB() {
 	if err := initUser(); err != nil {
 		log.Printf("initUser fail: %+v", err)
 	}
-	initDBFlag <- true
-	log.Printf("db init already")
 }
 
 func initUser() error {

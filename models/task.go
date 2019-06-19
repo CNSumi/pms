@@ -9,20 +9,12 @@ import (
 var (
 	zero	= uint16(0)
 	qs_task orm.QuerySeter
-	qs_task_initAlreadyFlag = make(chan bool, 1)
 
 	encoder2profile = map[string][]string{
 		"H264": {"main", "baseline", "high"},
 		"HEVC": {"main"},
 	}
 )
-
-func init() {
-	<- initDBFlag
-	close(initDBFlag)
-	qs_task = o.QueryTable("pms_task").OrderBy("id")
-	qs_task_initAlreadyFlag <- true
-}
 
 type Task struct {
 	ID int64 `json:"id" orm:"pk;column(id);auto"`
@@ -249,12 +241,12 @@ func UpdateConfig(newTask *Task) (ret *UpdateRet) {
 		return
 	}
 
-	if err := stopTask(oldTask); err != nil {
-		log.Printf("[id: %d, channel: %+v]stop task fail: %+v", oldTask.ID, oldTask.Channel, err)
+	if idx, ok := id2idx[oldTask.ID]; ok {	// stop task
+		workers[idx].cancel()
 	}
 
-	if err := startTask(newTask); err != nil {
-		log.Printf("start task tail: %+v", err)
+	if err := applyWorker(newTask); err != nil {
+		log.Printf("apply worker tail: %+v", err)
 	}
 	return
 }
@@ -267,8 +259,9 @@ func RemoveTask(id int64) error {
 		return fmt.Errorf("read config fail: %+v", err)
 	}
 
-	if err := stopTask(t); err != nil {
-		log.Printf("%d stop fail: %+v", t.Channel, err)
+	if idx, ok := id2idx[id]; ok {	// stop task
+		log.Printf("send id2idx: %d -> %d", id, idx)
+		workers[idx].cancel()
 	}
 
 	if _, err := o.Delete(t, "id"); err != nil {
