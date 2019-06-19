@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -210,7 +211,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 func (w *Worker) setStreamType() {
 	for {
 		content, _ := execCommand("getStreamType", w.Task.RTSPAddr)
-		w.logger.Printf("getStreamType content: %s", content)
+		w.logger.Printf("[%s]getStreamType content: %s", w.Task.RTSPAddr, content)
 		matches := getStreamTypeRegex.FindStringSubmatch(content)
 		if len(matches) == 2 && (matches[1] == "hevc" || matches[1] == "h264") {
 			w.Decoder = matches[1]
@@ -227,9 +228,14 @@ func (w *Worker) start() {
 }
 
 func (w *Worker) killOnvif(path string) {
-	text := fmt.Sprintf("kill -9 `cat %s`", path)
-	w.logger.Printf("stop onvif(%d), cmd: %s", w.Index, text)
-	_ = exec.Command("/bin/sh", "-c", text)
+	content, _ := execCommand(path)
+	pid, _ := strconv.ParseInt(content, 10, 64)
+	if pid <= 0 {
+		return
+	}
+
+	err := syscall.Kill(int(pid), syscall.SIGKILL)
+	w.logger.Printf("stop onvif(%d), pid: %d, err: %+v", w.Index, pid, err)
 }
 
 func (w *Worker) log() {
