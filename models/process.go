@@ -56,11 +56,8 @@ func initProcess() {
 		sub.Index = i
 		sub.GPU = sub.Index % 8
 		sub.logger = log.New(os.Stdout, fmt.Sprintf("[worker %d, gpu: %d]", sub.Index, sub.GPU), log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
-		sub.ctx, sub.cancel = context.WithCancel(context.Background())
 
 		workers[i] = sub
-		workers[i].SIG_RESTART = make(chan bool, 1)
-		workers[i].killOnvif(fmt.Sprintf("/tmp/%d.pid", 9001 + i))
 		go workers[i].start() // worker never stop, until pms stop
 	}
 
@@ -94,6 +91,9 @@ func applyWorker(t *Task) error {
 }
 
 func (w *Worker) doTask() {
+	w.ctx, w.cancel = context.WithCancel(context.Background())
+
+	w.SIG_RESTART = make(chan bool, 1)
 	w.Channel = int(*w.Task.Channel + 1)
 	w.OnvifPidPath = fmt.Sprintf("/tmp/%d.pid", w.Channel + 9000)
 	w.TNGRebootCount = 0
@@ -124,9 +124,8 @@ func (w *Worker) killTNG() {
 	if w.TNGPid == 0 {
 		return
 	}
-	cmd := exec.Command("kill", "-9", strconv.Itoa(w.TNGPid))
-	_ = cmd.Start()
-	_ = cmd.Wait()
+	err := syscall.Kill(w.TNGPid, syscall.SIGKILL)
+	w.logger.Printf("stop TNG, pid: %d, err: %+v", w.TNGPid, err)
 }
 
 func (w *Worker) startTNGVideoTool() {
@@ -224,11 +223,13 @@ func (w *Worker) setStreamType() {
 }
 
 func (w *Worker) start() {
+	w.killOnvif(fmt.Sprintf("/tmp/%d.pid", 9001 + w.Index))
+
 	go w.log()
 }
 
 func (w *Worker) killOnvif(path string) {
-	content, _ := execCommand(path)
+	content, _ := execCommand("cat", path)
 	pid, _ := strconv.ParseInt(content, 10, 64)
 	if pid <= 0 {
 		return
