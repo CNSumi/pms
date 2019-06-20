@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -133,6 +134,7 @@ func (w *Worker) startTNGVideoTool() {
 	w.initTNGVideoToolArgs()
 	w.TNGRebootCount++
 
+	w.logger.Printf("[EXEC]: %s", strings.Join(w.TNGArgs, " "))
 	cmd := exec.Command(w.TNGArgs[0], w.TNGArgs[1:]...)
 	_ = cmd.Start()
 	w.TNGPid = cmd.Process.Pid
@@ -181,8 +183,8 @@ func (w *Worker) initTNGVideoToolArgs() {
 
 	ret := []string{}
 	ret = append(ret, "TNGVideoTool")
-	ret = append(ret, "--prefix", t.Name)
-	ret = append(ret, "--rand", "30")
+	//ret = append(ret, "--prefix", t.Name)
+	//ret = append(ret, "--rand", "30")
 	ret = append(ret, "-hide_banner")
 	ret = append(ret, "-loglevel", "warning")
 	ret = append(ret, "-stimeout", "3000000")
@@ -190,7 +192,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	ret = append(ret, "-hwaccel", "cuvid")
 	ret = append(ret, "-vcodec", fmt.Sprintf("%s_cuvid", w.Decoder))
 	ret = append(ret, "-hwaccel_device", fmt.Sprintf("%d", w.GPU))
-	ret = append(ret, "-GPU", fmt.Sprintf("%d", w.GPU))
+	ret = append(ret, "-gpu", fmt.Sprintf("%d", w.GPU))
 	ret = append(ret, "-i", t.RTSPAddr)
 	ret = append(ret, "-f", "rtsp")
 	ret = append(ret, "-rtsp_transport", t.RTSPTransPort)
@@ -199,7 +201,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	ret = append(ret, "-zerolatency", "1")
 	ret = append(ret, "-vcodec", fmt.Sprintf("%s_nevnc", t.Encoder))
 	ret = append(ret, "-profile:v", t.Profile)
-	ret = append(ret, "-GPU", fmt.Sprintf("%d", w.GPU))
+	ret = append(ret, "-gpu", fmt.Sprintf("%d", w.GPU))
 	ret = append(ret, "-acodec", "aac")
 	ret = append(ret, "-b:a", t.BitRateA)
 	ret = append(ret, fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel+1))
