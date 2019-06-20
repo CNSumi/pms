@@ -192,8 +192,13 @@ func diff(old, new *Task) bool {
 	if old.Name != new.Name {return true}
 	if old.BitRateA != new.BitRateA {return true}
 	if old.BitRateV != new.BitRateV {return  true}
-	if old.FPS != new.FPS {return true}
-	if old.GOP != new.GOP {return true}
+
+	if (old.FPS != nil) != (new.FPS != nil) {return true}	// xor
+	if old.FPS != nil && *old.FPS != *new.FPS {return true}
+
+	if (old.GOP != nil) != (new.GOP != nil) {return true}	// xor
+	if old.GOP != nil && *old.GOP != *new.GOP {return true}
+
 	if old.Encoder != new.Encoder {return true}
 	if old.Profile != new.Profile {return  true}
 	if old.RTSPTransPort != new.RTSPTransPort {return  true}
@@ -201,7 +206,11 @@ func diff(old, new *Task) bool {
 	if old.ONVIF_IP != new.ONVIF_IP {return true}
 	if old.ONVIF_user != new.ONVIF_user {return true}
 	if old.ONVIF_pwd != new.ONVIF_pwd {return true}
-	if old.Channel != new.Channel {return true}
+
+	ca, cb := uint16(0), uint16(0)
+	if old.Channel != nil {ca = *old.Channel}
+	if new.Channel != nil {cb = *new.Channel}
+	if ca != cb {return true}
 
 	return false
 }

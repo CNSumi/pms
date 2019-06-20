@@ -27,7 +27,6 @@ type Worker struct {
 	// TNGVideoTool
 	TNGArgs        []string
 	TNGPid         int
-	TNGRunningFlag chan bool
 	TNGRebootCount int
 	TNGStartTime   time.Time
 	TNGMessage     string
@@ -130,7 +129,6 @@ func (w *Worker) killTNG() {
 }
 
 func (w *Worker) startTNGVideoTool() {
-	w.TNGRunningFlag = make(chan bool, 1)
 	w.initTNGVideoToolArgs()
 	w.TNGRebootCount++
 
