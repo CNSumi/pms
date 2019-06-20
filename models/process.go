@@ -171,7 +171,7 @@ func (w *Worker) initOnvifArgs() {
 	ret := []string{}
 	ret = append(ret, "onvif_srvd")
 	ret = append(ret, "--ifs", localNet.Name)
-	ret = append(ret, "--port", fmt.Sprintf("%d", w.Channel))
+	ret = append(ret, "--port", fmt.Sprintf("%d", w.Channel + 9000))
 	ret = append(ret, "--pid_file", w.OnvifPidPath)
 	ret = append(ret, "--scope", "onvif://www.onvif.org/name/RTSPSever")
 	ret = append(ret, "--scope", "onvif://www.onvif.org/Profile/S")
