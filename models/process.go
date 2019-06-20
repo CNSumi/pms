@@ -199,7 +199,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	ret = append(ret, "-g", fmt.Sprintf("%d", *t.GOP))
 	ret = append(ret, "-b:v", t.BitRateV)
 	ret = append(ret, "-zerolatency", "1")
-	ret = append(ret, "-vcodec", fmt.Sprintf("%s_nevnc", t.Encoder))
+	ret = append(ret, "-vcodec", fmt.Sprintf("%s_nvenc", strings.ToLower(t.Encoder)))
 	ret = append(ret, "-profile:v", t.Profile)
 	ret = append(ret, "-gpu", fmt.Sprintf("%d", w.GPU))
 	ret = append(ret, "-acodec", "aac")
