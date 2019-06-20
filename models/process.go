@@ -163,6 +163,7 @@ func (w *Worker) startOnvif() {
 	cmd := exec.Command(w.OnvifArgs[0], w.OnvifArgs[1:]...)
 	_ = cmd.Start()
 	w.OnvifPPid = cmd.Process.Pid
+	_, _ = cmd.Process.Wait()
 
 	return
 }
@@ -251,13 +252,14 @@ func (w *Worker) killOnvif(path string) {
 	}()
 	if w.OnvifPPid != 0 {
 		w.logger.Printf("[onvif] kill ppid: %d", w.OnvifPPid)
-		syscall.Kill(w.OnvifPPid, syscall.SIGKILL)
+		_ = syscall.Kill(w.OnvifPPid, syscall.SIGKILL)
 	}
 
-	if w.OnvifPidPath != "" {
+	if path != "" {
 		content, _ := execCommand("cat", path)
+		_ = os.Remove(path)
 		if pid, err := strconv.ParseInt(strings.TrimSpace(content), 10, 64); err == nil && pid > 0 {
-			syscall.Kill(int(pid), syscall.SIGKILL)
+			_ = syscall.Kill(int(pid), syscall.SIGKILL)
 			w.logger.Printf("pid: %d, err: %+v", pid, err)
 		}
 	}
