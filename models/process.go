@@ -157,6 +157,8 @@ func (w *Worker) startOnvif() {
 	}
 
 	w.initOnvifArgs()
+
+	w.logger.Printf("[EXEC]: %s", strings.Join(w.OnvifArgs, " "))
 	cmd := exec.Command(w.OnvifArgs[0], w.OnvifArgs[1:]...)
 	_ = cmd.Start()
 
