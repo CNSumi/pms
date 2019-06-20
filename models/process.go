@@ -140,8 +140,14 @@ func (w *Worker) startTNGVideoTool() {
 	go func() {
 		_, err := cmd.Process.Wait()
 		w.logger.Printf("TNG crash: %+v", err)
-		w.logger.Printf("[SIGNAL] SEND RESTART")
-		w.SIG_RESTART <- true
+		select {
+		case <-w.ctx.Done():
+			w.logger.Printf("[SIGNAL] TNG GoRoutine Received cancel, return")
+			return
+		default:
+			w.logger.Printf("[SIGNAL] SEND RESTART")
+			w.SIG_RESTART <- true
+		}
 	}()
 }
 
