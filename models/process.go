@@ -23,6 +23,7 @@ type Worker struct {
 	// onvif about
 	OnvifArgs    []string
 	OnvifPidPath string
+	OnvifPPid	int
 
 	// TNGVideoTool
 	TNGArgs        []string
@@ -95,7 +96,6 @@ func (w *Worker) doTask() {
 
 	w.SIG_RESTART = make(chan bool, 1)
 	w.Channel = int(*w.Task.Channel + 1)
-	w.OnvifPidPath = fmt.Sprintf("/tmp/%d.pid", w.Channel+9000)
 	w.TNGRebootCount = 0
 	w.logger.SetPrefix(fmt.Sprintf("[worker:%d, gpu: %d, id: %d, %s]", w.Index, w.GPU, w.Task.ID, w.Task.Name))
 	for {
@@ -156,11 +156,13 @@ func (w *Worker) startOnvif() {
 		return
 	}
 
+	w.OnvifPidPath = fmt.Sprintf("/tmp/%d.pid", w.Channel+9000)
 	w.initOnvifArgs()
 
 	w.logger.Printf("[EXEC]: %s", strings.Join(w.OnvifArgs, " "))
 	cmd := exec.Command(w.OnvifArgs[0], w.OnvifArgs[1:]...)
 	_ = cmd.Start()
+	w.OnvifPPid = cmd.Process.Pid
 
 	return
 }
@@ -243,14 +245,22 @@ func (w *Worker) start() {
 }
 
 func (w *Worker) killOnvif(path string) {
-	content, _ := execCommand("cat", path)
-	pid, _ := strconv.ParseInt(content, 10, 64)
-	if pid <= 0 {
-		return
+	defer func() {
+		w.OnvifPPid = 0
+		w.OnvifPidPath = ""
+	}()
+	if w.OnvifPPid != 0 {
+		w.logger.Printf("[onvif] kill ppid: %d", w.OnvifPPid)
+		syscall.Kill(w.OnvifPPid, syscall.SIGKILL)
 	}
 
-	err := syscall.Kill(int(pid), syscall.SIGKILL)
-	w.logger.Printf("stop onvif(%d), pid: %d, err: %+v", w.Index, pid, err)
+	if w.OnvifPidPath != "" {
+		content, _ := execCommand("cat", path)
+		if pid, err := strconv.ParseInt(strings.TrimSpace(content), 10, 64); err == nil && pid > 0 {
+			syscall.Kill(int(pid), syscall.SIGKILL)
+			w.logger.Printf("pid: %d, err: %+v", pid, err)
+		}
+	}
 }
 
 func (w *Worker) log() {
