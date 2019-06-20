@@ -29,7 +29,7 @@ type Worker struct {
 	TNGRunningFlag chan bool
 	TNGRebootCount int
 	TNGStartTime   time.Time
-	TNGMessage		string
+	TNGMessage     string
 
 	Msg   string
 	Lock  bool
@@ -40,14 +40,14 @@ type Worker struct {
 	logWorkerTicker *time.Ticker
 	logTaskTicker   *time.Ticker
 
-	SIG_RESTART	chan bool
-	cancel		context.CancelFunc
-	ctx			context.Context
+	SIG_RESTART chan bool
+	cancel      context.CancelFunc
+	ctx         context.Context
 }
 
 var (
-	workers      [80]*Worker
-	id2idx = map[int64]int{}
+	workers [80]*Worker
+	id2idx  = map[int64]int{}
 )
 
 func initProcess() {
@@ -95,7 +95,7 @@ func (w *Worker) doTask() {
 
 	w.SIG_RESTART = make(chan bool, 1)
 	w.Channel = int(*w.Task.Channel + 1)
-	w.OnvifPidPath = fmt.Sprintf("/tmp/%d.pid", w.Channel + 9000)
+	w.OnvifPidPath = fmt.Sprintf("/tmp/%d.pid", w.Channel+9000)
 	w.TNGRebootCount = 0
 	w.logger.SetPrefix(fmt.Sprintf("[worker:%d, gpu: %d, id: %d, %s]", w.Index, w.GPU, w.Task.ID, w.Task.Name))
 	for {
@@ -202,7 +202,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	ret = append(ret, "-GPU", fmt.Sprintf("%d", w.GPU))
 	ret = append(ret, "-acodec", "aac")
 	ret = append(ret, "-b:a", t.BitRateA)
-	ret = append(ret, fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel + 1))
+	ret = append(ret, fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel+1))
 
 	w.TNGArgs = ret
 }
@@ -217,13 +217,19 @@ func (w *Worker) setStreamType() {
 			w.logger.Printf("set decoder: %s", w.Decoder)
 			return
 		}
-		time.Sleep(time.Second * 3)
+		tick := time.NewTicker(time.Second * 3)
+		select {
+		case <-w.ctx.Done():
+			return
+		case <-tick.C:
+			w.logger.Printf("getStreamType again")
+		}
 	}
 
 }
 
 func (w *Worker) start() {
-	w.killOnvif(fmt.Sprintf("/tmp/%d.pid", 9001 + w.Index))
+	w.killOnvif(fmt.Sprintf("/tmp/%d.pid", 9001+w.Index))
 
 	go w.log()
 }
