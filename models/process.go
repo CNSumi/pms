@@ -95,7 +95,7 @@ func (w *Worker) doTask() {
 	w.ctx, w.cancel = context.WithCancel(context.Background())
 
 	w.SIG_RESTART = make(chan bool, 1)
-	w.Channel = int(*w.Task.Channel + 1)
+	w.Channel = int(*w.Task.Channel)
 	w.TNGRebootCount = 0
 	w.logger.SetPrefix(fmt.Sprintf("[worker:%d, gpu: %d, id: %d, %s]", w.Index, w.GPU, w.Task.ID, w.Task.Name))
 	for {
