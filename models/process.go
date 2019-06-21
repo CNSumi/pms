@@ -208,7 +208,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	ret = append(ret, "-i", t.RTSPAddr)
 	ret = append(ret, "-f", "rtsp")
 	ret = append(ret, "-rtsp_transport", t.RTSPTransPort)
-	ret = append(ret, "-g", fmt.Sprintf("%d", *t.GOP))
+	ret = append(ret, "-g", fmt.Sprintf("%d", (*t.GOP) * (*t.FPS)))
 	ret = append(ret, "-b:v", t.BitRateV)
 	ret = append(ret, "-zerolatency", "1")
 	ret = append(ret, "-vcodec", fmt.Sprintf("%s_nvenc", strings.ToLower(t.Encoder)))
