@@ -181,8 +181,11 @@ func (w *Worker) initOnvifArgs() {
 	ret = append(ret, "--name", "RTSPSever")
 	ret = append(ret, "--width", "1920")
 	ret = append(ret, "--height", "1080")
-	ret = append(ret, "--url", t.RTSPAddr)
-	ret = append(ret, "--type", "JPEG")
+	ret = append(ret, "--url", fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel))
+
+	oType := "JPEG"
+	if strings.ToLower(t.Encoder) == "h264" {oType = "H264"}
+	ret = append(ret, "--type", oType)
 
 	w.OnvifArgs = ret
 }
@@ -213,7 +216,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	ret = append(ret, "-gpu", fmt.Sprintf("%d", w.GPU))
 	ret = append(ret, "-acodec", "aac")
 	ret = append(ret, "-b:a", t.BitRateA)
-	ret = append(ret, fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel+1))
+	ret = append(ret, fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel))
 
 	w.TNGArgs = ret
 }
