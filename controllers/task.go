@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	count_per_page = 5
+	count_per_page = 10
 )
 
 type TaskController struct {
