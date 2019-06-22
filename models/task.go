@@ -233,8 +233,7 @@ func UpdateConfig(newTask *Task) (ret *UpdateRet) {
 	}
 
 	if isNeed := diff(oldTask, newTask); !isNeed {
-		ret.Code = -2
-		ret.Message = fmt.Sprintf("no difference")
+		ret.Code = 0
 		return
 	}
 
