@@ -56,7 +56,7 @@ func GetRTSPAddress(host, user, password string) (string, error) {
 	content = strings.TrimSpace(content)
 	matches := getRTSPRegex.FindStringSubmatch(content)
 	if len(matches) == 3 {
-		return fmt.Sprintf("%s%s@%s:%s", matches[1], user, password, matches[2]), nil
+		return fmt.Sprintf("%s%s:%s@%s", matches[1], user, password, matches[2]), nil
 	}
 
 	return content, fmt.Errorf("unknown error(%s)", content)
