@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	getRTSPRegex = regexp.MustCompile(`exec success:(.*)`)
+	getRTSPRegex = regexp.MustCompile(`exec success:(rtsp://)(.*)`)
 	getStreamTypeRegex = regexp.MustCompile(`stream type (h\w{3})`)
 )
 
@@ -55,8 +55,8 @@ func GetRTSPAddress(host, user, password string) (string, error) {
 	content, _ := execCommand("getrtsp", host, user, password)
 	content = strings.TrimSpace(content)
 	matches := getRTSPRegex.FindStringSubmatch(content)
-	if len(matches) == 2 {
-		return matches[1], nil
+	if len(matches) == 3 {
+		return fmt.Sprintf("%s%s@%s:%s", matches[1], user, password, matches[2]), nil
 	}
 
 	return content, fmt.Errorf("unknown error(%s)", content)
