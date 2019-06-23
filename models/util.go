@@ -67,3 +67,18 @@ func execCommand(command string, args ...string) (string, error) {
 	b, err := cmd.Output()
 	return string(b), err
 }
+
+func mask2num(mask string) int {
+	mask = strings.TrimSpace(mask)
+	fields := strings.Split(mask, ".")
+	if len(fields) != 4 {return -1}
+
+	ret := 0
+	for _, field := range fields {
+		num, _ := strconv.ParseUint(field, 10, 64)
+		for i := 0; i < 8; i++ {
+			if num & 1 == 1 {ret++}
+		}
+	}
+	return ret
+}

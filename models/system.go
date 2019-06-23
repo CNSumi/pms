@@ -6,6 +6,7 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
+	"io/ioutil"
 	"log"
 	"os/exec"
 	"regexp"
@@ -101,7 +102,18 @@ func initLocalNet() error {
 	}
 	localNet.IP = fields[1]
 	localNet.Mask = fields[3]
-	localNet.Gate = fields[5]
+
+	// set gateway
+	content, _ = execCommand("route", "-n")
+	lines = strings.Split(content, "\n")
+	for _, line := range lines {
+		if !strings.Contains(line, localNet.Name) {continue}
+		fields := strings.Fields(line)
+		if len(fields) >= 2 {
+			localNet.Gate = fields[1]
+			break
+		}
+	}
 
 	return nil
 }
@@ -116,15 +128,39 @@ func Reboot() error {
 	return err
 }
 
-func SetNetwork(inet, mask, broadcast string) error {
+func SetNetwork(inet, mask, gateway string) error {
 	if !isIPV4Addr(inet) {
 		return fmt.Errorf("not ipv4 addr: %s", inet)
 	}
 	if !isIPV4Addr(mask) {
 		return fmt.Errorf("not ipv4 addr: %s", mask)
 	}
-	if !isIPV4Addr(broadcast) {
-		return fmt.Errorf("not ipv4 addr: %s", broadcast)
+	if !isIPV4Addr(gateway) {
+		return fmt.Errorf("not ipv4 addr: %s", gateway)
 	}
+
+	ret := []string{}
+	ret = append(ret, "# pms Network manage")
+	ret = append(ret, "network:")
+	ret = append(ret, "  version: 2")
+	ret = append(ret, "  renderer: NetworkManager")
+	ret = append(ret, "\n")
+	ret = append(ret, "  ethernets:")
+	ret = append(ret, fmt.Sprintf("    %s:", localNet.Name))
+	ret = append(ret, "      dhcp4: no")
+	ret = append(ret, "      dhcp6: no")
+	ret = append(ret, fmt.Sprintf("      addresses: [%s/%d,]", inet, mask2num(mask)))
+	ret = append(ret, fmt.Sprintf("      gateway4: %s", gateway))
+	ret = append(ret, fmt.Sprintf("      nameservers:"))
+	ret = append(ret, fmt.Sprintf("        addresses: [8.8.8.8,]"))
+
+	text := strings.Join(ret, "\n")
+	fmt.Printf("text: \n%s", text)
+
+	_ = ioutil.WriteFile("/etc/netplan/pms.yaml", []byte(text), 0644)
+	_, _ = execCommand("netplan", "apply")
+	_, _ = execCommand("reboot", "now")
+
 	return nil
 }
+
