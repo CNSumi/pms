@@ -21,12 +21,12 @@ type Worker struct {
 	Channel int // channel, port, etc
 
 	// onvif about
-	OnvifArgs    []string
+	OnvifArgs    string
 	OnvifPidPath string
 	OnvifPPid	int
 
 	// TNGVideoTool
-	TNGArgs        []string
+	TNGArgs        string
 	TNGPid         int
 	TNGRebootCount int
 	TNGStartTime   time.Time
@@ -132,8 +132,8 @@ func (w *Worker) startTNGVideoTool() {
 	w.initTNGVideoToolArgs()
 	w.TNGRebootCount++
 
-	w.logger.Printf("[EXEC]: %s", strings.Join(w.TNGArgs, " "))
-	cmd := exec.Command(w.TNGArgs[0], w.TNGArgs[1:]...)
+	w.logger.Printf("[EXEC]: %s", w.TNGArgs)
+	cmd := exec.Command("sh", "-c", w.TNGArgs)
 	_ = cmd.Start()
 	w.TNGPid = cmd.Process.Pid
 	w.TNGStartTime = time.Now()
@@ -159,8 +159,8 @@ func (w *Worker) startOnvif() {
 	w.OnvifPidPath = fmt.Sprintf("/tmp/%d.pid", w.Channel+9000)
 	w.initOnvifArgs()
 
-	w.logger.Printf("[EXEC]: %s", strings.Join(w.OnvifArgs, " "))
-	cmd := exec.Command(w.OnvifArgs[0], w.OnvifArgs[1:]...)
+	w.logger.Printf("[EXEC]: %s", w.OnvifArgs)
+	cmd := exec.Command("sh", "-c", w.OnvifArgs)
 	_ = cmd.Start()
 	w.OnvifPPid = cmd.Process.Pid
 	_, _ = cmd.Process.Wait()
@@ -171,59 +171,61 @@ func (w *Worker) startOnvif() {
 func (w *Worker) initOnvifArgs() {
 	t := w.Task
 
-	ret := []string{}
-	ret = append(ret, "onvif_srvd")
-	ret = append(ret, "--ifs", localNet.Name)
-	ret = append(ret, "--port", fmt.Sprintf("%d", w.Channel + 9000))
-	ret = append(ret, "--pid_file", w.OnvifPidPath)
-	ret = append(ret, "--scope", "onvif://www.onvif.org/name/RTSPSever")
-	ret = append(ret, "--scope", "onvif://www.onvif.org/Profile/S")
-	ret = append(ret, "--name", "RTSPSever")
-	ret = append(ret, "--width", "1920")
-	ret = append(ret, "--height", "1080")
-	ret = append(ret, "--url", fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel))
+	text := "onvif_srvd "
+	text += fmt.Sprintf("--ifs %s ", localNet.Name)
+	text += fmt.Sprintf("--port %d ", w.Channel + 9000)
+	text += fmt.Sprintf("--pid_file %s ", w.OnvifArgs)
+	text += fmt.Sprintf("--scope onvif://www.onvif.org/name/RTSPSever ")
+	text += fmt.Sprintf("--scope onvif://www.onvif.org/Profile/S ")
+	text += fmt.Sprintf("--name RTSPSever ")
+	text += fmt.Sprintf("--width 1920 ")
+	text += fmt.Sprintf("--height 1080 ")
+	text += fmt.Sprintf("--url %s ", fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel))
 
 	oType := "JPEG"
 	if strings.ToLower(t.Encoder) == "h264" {oType = "H264"}
-	ret = append(ret, "--type", oType)
+	text += fmt.Sprintf("--type %s", oType)
 
-	w.OnvifArgs = ret
+	w.OnvifArgs = text
 }
 
 func (w *Worker) initTNGVideoToolArgs() {
 	t := w.Task
 
-	ret := []string{}
-	ret = append(ret, "TNGVideoTool")
-	//ret = append(ret, "--prefix", t.Name)
-	//ret = append(ret, "--rand", "30")
-	ret = append(ret, "-hide_banner")
-	ret = append(ret, "-loglevel", "warning")
-	ret = append(ret, "-stimeout", "3000000")
-	ret = append(ret, "-rtsp_transport", t.RTSPTransPort)
-	ret = append(ret, "-hwaccel", "cuvid")
-	ret = append(ret, "-vcodec", fmt.Sprintf("%s_cuvid", w.Decoder))
-	ret = append(ret, "-hwaccel_device", fmt.Sprintf("%d", w.GPU))
-	ret = append(ret, "-gpu", fmt.Sprintf("%d", w.GPU))
-	ret = append(ret, "-i", t.RTSPAddr)
-	ret = append(ret, "-f", "rtsp")
-	ret = append(ret, "-rtsp_transport", t.RTSPTransPort)
-	ret = append(ret, "-g", fmt.Sprintf("%d", (*t.GOP) * (*t.FPS)))
-	ret = append(ret, "-b:v", t.BitRateV)
-	ret = append(ret, "-zerolatency", "1")
-	ret = append(ret, "-vcodec", fmt.Sprintf("%s_nvenc", strings.ToLower(t.Encoder)))
-	ret = append(ret, "-profile:v", t.Profile)
-	ret = append(ret, "-gpu", fmt.Sprintf("%d", w.GPU))
-	ret = append(ret, "-acodec", "aac")
-	ret = append(ret, "-b:a", t.BitRateA)
-	ret = append(ret, fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel))
+	text := "TNGVideoTool "
+	text += "-hide_banner "
+	text += "-loglevel warning "
+	text += "-stimeout 3000000 "
+	text += fmt.Sprintf("-rtsp_transport %s ", t.RTSPTransPort)
+	text += "-hwaccel cuvid "
+	text += fmt.Sprintf("-vcodec %s_cuvid ", w.Decoder)
+	text += fmt.Sprintf("-hwaccel_device %d ", w.GPU)
+	text += fmt.Sprintf("-gpu %d ", w.GPU)
+	text += fmt.Sprintf("-i '%s' ", t.RTSPAddr)
+	text += "-f rtsp "
+	text += fmt.Sprintf("-rtsp_transport %s ", t.RTSPTransPort)
+	text += fmt.Sprintf("-g %d ", (*t.GOP) * (*t.FPS))
+	text += fmt.Sprintf("-b:v %s ", t.BitRateA)
+	text += "-zerolatency 1 "
+	text += fmt.Sprintf("-vcodec %s_nvenc ", strings.ToLower(t.Encoder))
+	text += fmt.Sprintf("-profile:v %s ", t.Profile)
+	text += fmt.Sprintf("-gpu %d ", w.GPU)
+	text += "-acodec aac "
+	text += fmt.Sprintf("-b:a %s ", t.BitRateA)
+	text += fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel)
 
-	w.TNGArgs = ret
+
+	w.TNGArgs = text
 }
 
 func (w *Worker) setStreamType() {
 	for {
-		content, _ := execCommand("getStreamType", w.Task.RTSPAddr)
+		w.Decoder = "h264"
+		return
+
+		cmd := exec.Command("sh", "-c", fmt.Sprintf("getStreamType '%s'", w.Task.RTSPAddr))
+		b, _ := cmd.Output()
+		content := string(b)
 		w.logger.Printf("[%s]getStreamType content: %s", w.Task.RTSPAddr, content)
 		matches := getStreamTypeRegex.FindStringSubmatch(content)
 		if len(matches) == 2 && (matches[1] == "hevc" || matches[1] == "h264") {

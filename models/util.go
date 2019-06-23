@@ -64,6 +64,7 @@ func GetRTSPAddress(host, user, password string) (string, error) {
 
 func execCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
+	fmt.Printf("args: %+v", args)
 	b, err := cmd.Output()
 	return string(b), err
 }
