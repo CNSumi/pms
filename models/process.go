@@ -174,7 +174,7 @@ func (w *Worker) initOnvifArgs() {
 	text := "onvif_srvd "
 	text += fmt.Sprintf("--ifs %s ", localNet.Name)
 	text += fmt.Sprintf("--port %d ", w.Channel + 9000)
-	text += fmt.Sprintf("--pid_file %s ", w.OnvifArgs)
+	text += fmt.Sprintf("--pid_file /tmp/%d.pid ", w.Channel + 9000)
 	text += fmt.Sprintf("--scope onvif://www.onvif.org/name/RTSPSever ")
 	text += fmt.Sprintf("--scope onvif://www.onvif.org/Profile/S ")
 	text += fmt.Sprintf("--name RTSPSever ")
