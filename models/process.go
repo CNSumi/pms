@@ -210,7 +210,12 @@ func (w *Worker) initTNGVideoToolArgs() {
 	text += fmt.Sprintf("-g %d ", (*t.GOP) * (*t.FPS))
 	text += fmt.Sprintf("-b:v %s ", t.BitRateA)
 	text += "-zerolatency 1 "
-	text += fmt.Sprintf("-vcodec %s_nvenc ", strings.ToLower(t.Encoder))
+
+	encoder := "h264"
+	if strings.ToLower(t.Encoder) == "h265" {
+		encoder = "hevc"
+	}
+	text += fmt.Sprintf("-vcodec %s_nvenc ", encoder)
 	text += fmt.Sprintf("-profile:v %s ", t.Profile)
 	text += fmt.Sprintf("-gpu %d ", w.GPU)
 	text += "-acodec aac "
