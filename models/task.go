@@ -45,6 +45,8 @@ func ListTask() ([]*Task, error) {
 	}
 
 	for _, task := range tasks {
+		task.Encoder = strings.ToUpper(task.Encoder)
+		task.Decoder = strings.ToUpper(task.Decoder)
 		if task.Channel == nil {
 			task.Channel = &zero
 		}
