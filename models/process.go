@@ -206,7 +206,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	text += fmt.Sprintf("-gpu %d ", w.GPU)
 	text += fmt.Sprintf("-i '%s' ", t.RTSPAddr)
 	text += "-f rtsp "
-	text += fmt.Sprintf("-rtsp_transport %s ", t.RTSPTransPort)
+	text += fmt.Sprintf("-rtsp_transport %s ", "tcp")
 	text += fmt.Sprintf("-g %d ", (*t.GOP) * (*t.FPS))
 	text += fmt.Sprintf("-b:v %s ", t.BitRateA)
 	text += "-zerolatency 1 "
