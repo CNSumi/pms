@@ -189,7 +189,7 @@ func (w *Worker) initOnvifArgs() {
 func (w *Worker) initTNGVideoToolArgs() {
 	t := w.Task
 
-	text := "TNGVideoTool "
+	text := "exec TNGVideoTool "
 	text += "-hide_banner "
 	text += "-loglevel warning "
 	text += "-stimeout 3000000 "
