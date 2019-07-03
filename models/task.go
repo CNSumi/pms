@@ -13,7 +13,7 @@ var (
 
 	encoder2profile = map[string][]string{
 		"H264": {"main", "baseline", "high"},
-		"HEVC": {"main"},
+		"H265": {"main"},
 	}
 )
 
@@ -124,11 +124,6 @@ func (t *Task) checkDecoder() error {
 
 
 func (t *Task) checkEncoderAndProfile() error {
-	encoder2profile = map[string][]string{
-		"H264": {"main", "baseline", "high"},
-		"HEVC": {"main"},
-	}
-
 	if ps, ok := encoder2profile[t.Encoder]; ok {
 		for _, profile := range ps {
 			if profile == t.Profile {
