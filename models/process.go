@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -21,8 +20,7 @@ type Worker struct {
 
 	// onvif about
 	OnvifArgs    string
-	OnvifPidPath string
-	OnvifPPid	int
+	OnvifPid	int
 
 	// TNGVideoTool
 	TNGArgs        string
@@ -105,13 +103,14 @@ func (w *Worker) doTask() {
 		select {
 		case <-w.ctx.Done():
 			w.logger.Printf("[SIGNAL] REVEIVED CANCEL")
-			w.killOnvif(w.OnvifPidPath)
+			w.killOnvif()
 			w.killTNG()
 			w.Lock = false
 			return
 		case <-w.SIG_RESTART:
 			w.logger.Printf("[SIGNAL] RECEIVED RESTART")
-			w.killOnvif(w.OnvifPidPath)
+			w.killOnvif()
+			w.killTNG()
 		}
 		time.Sleep(time.Second * 3)
 	}
@@ -153,37 +152,24 @@ func (w *Worker) startOnvif() {
 		return
 	}
 
-	w.OnvifPidPath = fmt.Sprintf("/tmp/%d.pid", w.Channel+9000)
-	w.initOnvifArgs()
-
+	w.OnvifArgs = fmt.Sprintf("exec onvifProxy %d %s %s", w.Channel, localNet.IP, w.Task.ONVIF_IP)
 	w.logger.Printf("[EXEC]: %s", w.OnvifArgs)
+
 	cmd := exec.Command("sh", "-c", w.OnvifArgs)
 	_ = cmd.Start()
-	w.OnvifPPid = cmd.Process.Pid
-	_, _ = cmd.Process.Wait()
-
-	return
-}
-
-func (w *Worker) initOnvifArgs() {
-	t := w.Task
-
-	text := "onvif_srvd "
-	text += fmt.Sprintf("--ifs %s ", localNet.Name)
-	text += fmt.Sprintf("--port %d ", w.Channel + 9000)
-	text += fmt.Sprintf("--pid_file /tmp/%d.pid ", w.Channel + 9000)
-	text += fmt.Sprintf("--scope onvif://www.onvif.org/name/RTSPSever ")
-	text += fmt.Sprintf("--scope onvif://www.onvif.org/Profile/S ")
-	text += fmt.Sprintf("--name RTSPSever ")
-	text += fmt.Sprintf("--width 1920 ")
-	text += fmt.Sprintf("--height 1080 ")
-	text += fmt.Sprintf("--url %s ", fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel))
-
-	oType := "JPEG"
-	if strings.ToLower(t.Encoder) == "h264" {oType = "H264"}
-	text += fmt.Sprintf("--type %s", oType)
-
-	w.OnvifArgs = text
+	w.OnvifPid = cmd.Process.Pid
+	go func() {
+		_, err := cmd.Process.Wait()
+		w.logger.Printf("onvifProxy crash: %+v", err)
+		select {
+		case <-w.ctx.Done():
+			w.logger.Printf("[SIGNAL] onvifProxy GoRoutine Received cancel, return")
+			return
+		default:
+			w.logger.Printf("[SIGNAL] onvifProxy send RESTART")
+			w.SIG_RESTART <- true
+		}
+	}()
 }
 
 func (w *Worker) initTNGVideoToolArgs() {
@@ -227,28 +213,16 @@ func (w *Worker) initTNGVideoToolArgs() {
 }
 
 func (w *Worker) start() {
-	w.killOnvif(fmt.Sprintf("/tmp/%d.pid", 9001+w.Index))
-
 	go w.log()
 }
 
-func (w *Worker) killOnvif(path string) {
+func (w *Worker) killOnvif() {
 	defer func() {
-		w.OnvifPPid = 0
-		w.OnvifPidPath = ""
+		w.OnvifPid = 0
 	}()
-	if w.OnvifPPid != 0 {
-		w.logger.Printf("[onvif] kill ppid: %d", w.OnvifPPid)
-		_ = syscall.Kill(w.OnvifPPid, syscall.SIGKILL)
-	}
-
-	if path != "" {
-		content, _ := execCommand("cat", path)
-		_ = os.Remove(path)
-		if pid, err := strconv.ParseInt(strings.TrimSpace(content), 10, 64); err == nil && pid > 0 {
-			_ = syscall.Kill(int(pid), syscall.SIGKILL)
-			w.logger.Printf("pid: %d, err: %+v", pid, err)
-		}
+	if w.OnvifPid != 0 {
+		w.logger.Printf("[onvif] kill pid: %d", w.OnvifPid)
+		_ = syscall.Kill(w.OnvifPid, syscall.SIGKILL)
 	}
 }
 
