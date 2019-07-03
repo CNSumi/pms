@@ -15,7 +15,6 @@ import (
 
 type Worker struct {
 	Task    *Task  // task id must ge 1
-	Decoder string // use for TNGVideoTool.args
 
 	// task about
 	Channel int // channel, port, etc
@@ -99,8 +98,6 @@ func (w *Worker) doTask() {
 	w.TNGRebootCount = 0
 	w.logger.SetPrefix(fmt.Sprintf("[worker:%d, gpu: %d, id: %d, %s]", w.Index, w.GPU, w.Task.ID, w.Task.Name))
 	for {
-		w.setStreamType()
-
 		w.startTNGVideoTool()
 
 		w.startOnvif()
@@ -198,7 +195,13 @@ func (w *Worker) initTNGVideoToolArgs() {
 	text += "-stimeout 3000000 "
 	text += fmt.Sprintf("-rtsp_transport %s ", t.RTSPTransPort)
 	text += "-hwaccel cuvid "
-	text += fmt.Sprintf("-vcodec %s_cuvid ", w.Decoder)
+
+	d := "h264"
+	if t.Decoder == "h265" {
+		d = "hevc"
+	}
+
+	text += fmt.Sprintf("-vcodec %s_cuvid ", d)
 	text += fmt.Sprintf("-hwaccel_device %d ", w.GPU)
 	text += fmt.Sprintf("-gpu %d ", w.GPU)
 	text += fmt.Sprintf("-i '%s' ", t.RTSPAddr)
@@ -216,32 +219,6 @@ func (w *Worker) initTNGVideoToolArgs() {
 
 
 	w.TNGArgs = text
-}
-
-func (w *Worker) setStreamType() {
-	for {
-		w.Decoder = "h264"
-		return
-
-		cmd := exec.Command("sh", "-c", fmt.Sprintf("getStreamType '%s'", w.Task.RTSPAddr))
-		b, _ := cmd.Output()
-		content := string(b)
-		w.logger.Printf("[%s]getStreamType content: %s", w.Task.RTSPAddr, content)
-		matches := getStreamTypeRegex.FindStringSubmatch(content)
-		if len(matches) == 2 && (matches[1] == "hevc" || matches[1] == "h264") {
-			w.Decoder = matches[1]
-			w.logger.Printf("set decoder: %s", w.Decoder)
-			return
-		}
-		tick := time.NewTicker(time.Second * 3)
-		select {
-		case <-w.ctx.Done():
-			return
-		case <-tick.C:
-			w.logger.Printf("getStreamType again")
-		}
-	}
-
 }
 
 func (w *Worker) start() {

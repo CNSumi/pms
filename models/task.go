@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"github.com/astaxie/beego/orm"
 	"log"
+	"strings"
 )
 
 var (
-	zero	= uint16(0)
+	zero    = uint16(0)
 	qs_task orm.QuerySeter
 
 	encoder2profile = map[string][]string{
@@ -25,6 +26,7 @@ type Task struct {
 	FPS           *uint64 `json:"fps" orm:"column(fps)"`
 	GOP           *uint64 `json:"gop" orm:"column(gop)"`
 	Encoder       string  `json:"encoder"`
+	Decoder       string  `json:"decoder"`
 	Profile       string  `json:"profile"`
 	RTSPTransPort string  `json:"rtsp_transport" orm:"column(rtsp_transport)"`
 	RTSPAddr      string  `json:"rtsp_addr" orm:"column(rtsp_addr)"`
@@ -64,6 +66,10 @@ func (t *Task) selfCheck() error {
 	}
 
 	if err := t.checkEncoderAndProfile(); err != nil {
+		return err
+	}
+
+	if err := t.checkDecoder(); err != nil {
 		return err
 	}
 
@@ -107,6 +113,15 @@ func (t *Task) checkFPSAndGOP() error {
 	}
 	return nil
 }
+
+func (t *Task) checkDecoder() error {
+	t.Decoder = strings.ToLower(t.Decoder)
+	if t.Decoder != "h264" && t.Decoder != "h265" {
+		return fmt.Errorf("err decoder(%s)", t.Decoder)
+	}
+	return nil
+}
+
 
 func (t *Task) checkEncoderAndProfile() error {
 	encoder2profile = map[string][]string{
@@ -183,41 +198,83 @@ func AddConfig(t *Task) (int64, error) {
 }
 
 type UpdateRet struct {
-	ID		int64	`json:"id"`
-	Code	int	`json:"code"`
-	Message	string	`json:"message"`
+	ID      int64  `json:"id"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 func diff(old, new *Task) bool {
-	if old.Name != new.Name {return true}
-	if old.BitRateA != new.BitRateA {return true}
-	if old.BitRateV != new.BitRateV {return  true}
+	if old.Name != new.Name {
+		return true
+	}
+	if old.BitRateA != new.BitRateA {
+		return true
+	}
+	if old.BitRateV != new.BitRateV {
+		return true
+	}
 
-	if (old.FPS != nil) != (new.FPS != nil) {return true}	// xor
-	if old.FPS != nil && *old.FPS != *new.FPS {return true}
+	if (old.FPS != nil) != (new.FPS != nil) {
+		return true
+	} // xor
+	if old.FPS != nil && *old.FPS != *new.FPS {
+		return true
+	}
 
-	if (old.GOP != nil) != (new.GOP != nil) {return true}	// xor
-	if old.GOP != nil && *old.GOP != *new.GOP {return true}
+	if strings.ToLower(old.Decoder) != strings.ToLower(new.Decoder) {
+		return true
+	}
 
-	if old.Encoder != new.Encoder {return true}
-	if old.Profile != new.Profile {return  true}
-	if old.RTSPTransPort != new.RTSPTransPort {return  true}
-	if old.RTSPAddr != new.RTSPAddr {return true}
-	if old.ONVIF_IP != new.ONVIF_IP {return true}
-	if old.ONVIF_user != new.ONVIF_user {return true}
-	if old.ONVIF_pwd != new.ONVIF_pwd {return true}
+	if (old.GOP != nil) != (new.GOP != nil) {
+		return true
+	} // xor
+	if old.GOP != nil && *old.GOP != *new.GOP {
+		return true
+	}
+
+	if old.Encoder != new.Encoder {
+		return true
+	}
+	if old.Profile != new.Profile {
+		return true
+	}
+	if old.RTSPTransPort != new.RTSPTransPort {
+		return true
+	}
+	if old.RTSPAddr != new.RTSPAddr {
+		return true
+	}
+	if old.ONVIF_IP != new.ONVIF_IP {
+		return true
+	}
+	if old.ONVIF_user != new.ONVIF_user {
+		return true
+	}
+	if old.ONVIF_pwd != new.ONVIF_pwd {
+		return true
+	}
 
 	ca, cb := uint16(0), uint16(0)
-	if old.Channel != nil {ca = *old.Channel}
-	if new.Channel != nil {cb = *new.Channel}
-	if ca != cb {return true}
+	if old.Channel != nil {
+		ca = *old.Channel
+	}
+	if new.Channel != nil {
+		cb = *new.Channel
+	}
+	if ca != cb {
+		return true
+	}
 
 	return false
 }
 
 func UpdateConfig(newTask *Task) (ret *UpdateRet) {
-	if newTask == nil {return nil}
-	if newTask.ID == 0 {return nil}
+	if newTask == nil {
+		return nil
+	}
+	if newTask.ID == 0 {
+		return nil
+	}
 
 	ret = &UpdateRet{
 		ID: newTask.ID,
@@ -243,13 +300,13 @@ func UpdateConfig(newTask *Task) (ret *UpdateRet) {
 		return
 	}
 	flag, err := o.Update(newTask)
-	if err != nil || flag != 1{
+	if err != nil || flag != 1 {
 		ret.Code = -3
 		ret.Message = fmt.Sprintf("exec update fail: %+v", err)
 		return
 	}
 
-	if idx, ok := id2idx[oldTask.ID]; ok {	// stop task
+	if idx, ok := id2idx[oldTask.ID]; ok { // stop task
 		workers[idx].cancel()
 	}
 
@@ -267,7 +324,7 @@ func RemoveTask(id int64) error {
 		return fmt.Errorf("read config fail: %+v", err)
 	}
 
-	if idx, ok := id2idx[id]; ok {	// stop task
+	if idx, ok := id2idx[id]; ok { // stop task
 		log.Printf("send id2idx: %d -> %d", id, idx)
 		workers[idx].cancel()
 	}
