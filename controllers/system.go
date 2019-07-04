@@ -29,7 +29,7 @@ func (c *SystemController) Network() {
 func (c *SystemController) Reboot() {
 	err := models.Reboot()
 	if err != nil {
-		c.Resp.Code = -1
+		c.Resp.Code = models.ERR_CODE_CMD_EXEC_FAIL
 		c.Resp.Message = fmt.Sprintf("reboot fail: %+v", err)
 	}
 }
