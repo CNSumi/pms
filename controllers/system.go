@@ -27,7 +27,11 @@ func (c *SystemController) Network() {
 
 // @router /reboot [post]
 func (c *SystemController) Reboot() {
-	//err := models.Reboot()
+	err := models.Reboot()
+	if err != nil {
+		c.Resp.Code = -1
+		c.Resp.Message = fmt.Sprintf("reboot fail: %+v", err)
+	}
 }
 
 // @router /setNetwork [post]
