@@ -44,11 +44,12 @@ type Worker struct {
 }
 
 var (
-	workers = make([]*Worker, 0, GPU_COUNT * 10)
+	workers []*Worker
 	id2idx  = map[int64]int{}
 )
 
 func initProcess() {
+	workers = make([]*Worker, 0, 10 * GPU_COUNT)
 	for i := 0; i < cap(workers); i++ {
 		workers = append(workers, nil)
 	}
