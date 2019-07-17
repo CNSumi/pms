@@ -44,7 +44,7 @@ type Worker struct {
 }
 
 var (
-	workers = make([]*Worker, 0, GPU_COUNT* 10)
+	workers = make([]*Worker, 0, GPU_COUNT * 10)
 	id2idx  = map[int64]int{}
 )
 

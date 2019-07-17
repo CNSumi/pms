@@ -33,6 +33,7 @@ var (
 func initParam() {
 	GPU_COUNT = beego.AppConfig.DefaultInt("gpus", 8)
 	if GPU_COUNT <= 0 || GPU_COUNT >= 128 {
-		log.Fatalf("invalid video card count: %d", GPU_COUNT)
+		log.Fatalf("invalid gpus,count: %d", GPU_COUNT)
 	}
+	log.Printf("gpu.counts: %d", GPU_COUNT)
 }
