@@ -32,7 +32,7 @@ type Worker struct {
 	Msg   string
 	Lock  bool
 	Index int // index at worker array, same GPU
-	GPU   int // run at which gpu, number [0-8), value equal to index % 8
+	GPU   int // run at which gpu, number [0-GPU_COUNT), value equal to index % GPU_COUNT
 
 	logger          *log.Logger
 	logWorkerTicker *time.Ticker
@@ -44,15 +44,19 @@ type Worker struct {
 }
 
 var (
-	workers [80]*Worker
+	workers = make([]*Worker, 0, GPU_COUNT* 10)
 	id2idx  = map[int64]int{}
 )
 
 func initProcess() {
+	for i := 0; i < cap(workers); i++ {
+		workers = append(workers, nil)
+	}
+
 	for i := 0; i < len(workers); i++ {
 		sub := &Worker{}
 		sub.Index = i
-		sub.GPU = sub.Index % 8
+		sub.GPU = sub.Index % GPU_COUNT
 		sub.logger = log.New(os.Stdout, fmt.Sprintf("[worker %d, gpu: %d]", sub.Index, sub.GPU), log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
 
 		workers[i] = sub

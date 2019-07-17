@@ -1,5 +1,10 @@
 package models
 
+import (
+	"github.com/astaxie/beego"
+	"log"
+)
+
 type ERR_CODE uint32
 
 const (
@@ -20,3 +25,14 @@ const (
 	ERR_CODE_CMD_EXEC_FAIL				  ERR_CODE = 4007
 	ERR_CODE_DB_QUERY_FAIL				  ERR_CODE = 4008
 )
+
+var (
+	GPU_COUNT = 8
+)
+
+func initParam() {
+	GPU_COUNT = beego.AppConfig.DefaultInt("gpus", 8)
+	if GPU_COUNT <= 0 || GPU_COUNT >= 128 {
+		log.Fatalf("invalid video card count: %d", GPU_COUNT)
+	}
+}
