@@ -146,7 +146,7 @@ func (w *Worker) startTNGVideoTool() {
 			w.logger.Printf("[SIGNAL] TNG GoRoutine Received cancel, return")
 			return
 		default:
-			w.logger.Printf("[SIGNAL] SEND RESTART")
+			w.logger.Printf("[SIGNAL] TNG SEND RESTART")
 			w.SIG_RESTART <- true
 		}
 	}()
