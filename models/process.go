@@ -122,6 +122,7 @@ func (w *Worker) doTask() {
 			case <-w.SIG_RESTART:
 			}
 		}
+		<-time.After(time.Second * 3)
 	}
 }
 
