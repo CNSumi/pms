@@ -116,8 +116,12 @@ func (w *Worker) doTask() {
 			w.logger.Printf("[SIGNAL] RECEIVED RESTART")
 			w.killOnvif()
 			w.killTNG()
+
+			select {
+			case <-time.After(time.Second * 3):
+			case <-w.SIG_RESTART:
+			}
 		}
-		time.Sleep(time.Second * 3)
 	}
 }
 
