@@ -204,7 +204,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	text += "-f rtsp "
 	text += fmt.Sprintf("-rtsp_transport %s ", "tcp")
 	text += fmt.Sprintf("-g %d ", (*t.GOP) * (*t.FPS))
-	text += fmt.Sprintf("-b:v %s ", t.BitRateA)
+	text += fmt.Sprintf("-b:v %s ", t.BitRateV)
 	text += "-zerolatency 1 "
 
 	encoder := "h264"
