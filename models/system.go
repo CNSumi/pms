@@ -23,7 +23,8 @@ var (
 	stat     = &SystemStat{}
 	version  = beego.AppConfig.DefaultString("version", "1.0.0")
 	localNet = &NetStat{}
-	ipMaskGateRegex = regexp.MustCompile(`^\s+inet\s+(\d{1,3}(\.\d{1,3}){3})\s+netmask\s+(\d{1,3}(\.\d{1,3}){3})\s+broadcast\s+(\d{1,3}(\.\d{1,3}){3})`)
+	// inet 192.168.1.196  netmask 255.255.255.0  broadcast 192.168.1.255
+	ipMaskGateRegex = regexp.MustCompile(`^\s+inet\s+(.*?)\s+netmask\s+(.*?)\s+`)
 )
 
 type NetStat struct {
@@ -42,7 +43,7 @@ type SystemStat struct {
 
 func initSystem() {
 	if err := initLocalNet(); err != nil {
-		//log.Fatalf("initLocalNet fail: %+v", err)
+		log.Fatalf("initLocalNet fail: %+v", err)
 	}
 
 	go func() {
@@ -97,11 +98,11 @@ func initLocalNet() error {
 		return fmt.Errorf("ifconfig: interface %s  not exist", localNet.Name)
 	}
 	fields := ipMaskGateRegex.FindStringSubmatch(lines[1])
-	if len(fields) <= 6 {
+	if len(fields) < 3 {
 		return fmt.Errorf("unsupport os")
 	}
 	localNet.IP = fields[1]
-	localNet.Mask = fields[3]
+	localNet.Mask = fields[2]
 
 	// set gateway
 	content, _ = execCommand("route", "-n")
