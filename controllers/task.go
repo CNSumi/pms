@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"pms.cnsumi.com/models"
 )
 
@@ -93,6 +94,8 @@ func (c *TaskController) UpdateTask() {
 		c.Resp.Message = fmt.Sprintf("update task.count == 0")
 		return
 	}
+
+	log.Printf("update.body: %s", string(c.Ctx.Input.RequestBody))
 
 	ret := []*models.UpdateRet{}
 	for _, t := range t {
