@@ -12,3 +12,6 @@ build:
 clean:
 	$(GOCLEAN)
 	rm -f $(TARGET) $(TARGET7)
+pms:
+	$(GOCLEAN)
+	$(GOBUILD) -o $(TARGET)

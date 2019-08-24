@@ -49,7 +49,7 @@ var (
 )
 
 func initProcess() {
-	workers = make([]*Worker, 0, 10 * GPU_COUNT)
+	workers = make([]*Worker, 0, PROCESSES_PER_GPU * GPU_COUNT)
 	for i := 0; i < cap(workers); i++ {
 		workers = append(workers, nil)
 	}
@@ -80,6 +80,7 @@ func applyWorker(t *Task) error {
 	var mutex sync.Mutex
 	mutex.Lock()
 	defer mutex.Unlock()
+	log.Printf("start select workers")
 	for i := 0; i < len(workers); i++ {
 		if !workers[i].Lock {
 			workers[i].Lock = true
@@ -90,7 +91,7 @@ func applyWorker(t *Task) error {
 			return nil
 		}
 	}
-	return nil
+	return fmt.Errorf("no worker supply")
 }
 
 func (w *Worker) doTask() {
@@ -117,9 +118,12 @@ func (w *Worker) doTask() {
 			w.killOnvif()
 			w.killTNG()
 
-			select {
-			case <-time.After(time.Second * 3):
-			case <-w.SIG_RESTART:
+			for i := 0; i < 3; i++ {
+				select {
+				case <-time.After(time.Second * 1):
+				case <-w.SIG_RESTART:
+					w.logger.Printf("[SIGNAL] RECEIVED RESTART[DROP]")
+				}
 			}
 		}
 		<-time.After(time.Second * 3)

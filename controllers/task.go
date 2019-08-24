@@ -100,6 +100,7 @@ func (c *TaskController) UpdateTask() {
 	ret := []*models.UpdateRet{}
 	for _, t := range t {
 		sub := models.UpdateConfig(t)
+		log.Printf("update.sub: %+v, ret: %+v", t, sub)
 		if sub != nil {
 			ret = append(ret, sub)
 		}

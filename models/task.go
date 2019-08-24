@@ -5,6 +5,7 @@ import (
 	"github.com/astaxie/beego/orm"
 	"log"
 	"strings"
+	"time"
 )
 
 var (
@@ -305,6 +306,8 @@ func UpdateConfig(newTask *Task) (ret *UpdateRet) {
 
 	if idx, ok := id2idx[oldTask.ID]; ok { // stop task
 		workers[idx].cancel()
+		delete(id2idx, oldTask.ID)
+		<-time.After(time.Millisecond * 800)
 	}
 
 	if err := applyWorker(newTask); err != nil {
@@ -322,8 +325,9 @@ func RemoveTask(id int64) error {
 	}
 
 	if idx, ok := id2idx[id]; ok { // stop task
-		log.Printf("send id2idx: %d -> %d", id, idx)
 		workers[idx].cancel()
+		log.Printf("send id2idx: %d -> %d", id, idx)
+		delete(id2idx, id)
 	}
 
 	if _, err := o.Delete(t, "id"); err != nil {
@@ -332,3 +336,4 @@ func RemoveTask(id int64) error {
 
 	return nil
 }
+

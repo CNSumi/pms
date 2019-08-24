@@ -28,6 +28,7 @@ const (
 
 var (
 	GPU_COUNT = 8
+	PROCESSES_PER_GPU = 10
 )
 
 func initParam() {
@@ -36,4 +37,10 @@ func initParam() {
 		log.Fatalf("invalid gpus,count: %d", GPU_COUNT)
 	}
 	log.Printf("gpu.counts: %d", GPU_COUNT)
+
+	PROCESSES_PER_GPU = beego.AppConfig.DefaultInt("process", 10)
+	if PROCESSES_PER_GPU <= 0 || PROCESSES_PER_GPU >= 128 {
+		log.Fatalf("invalid process per gpu: %d", PROCESSES_PER_GPU)
+	}
+	log.Printf("PROCESS_PER_GPU: %d", PROCESSES_PER_GPU)
 }
