@@ -11,3 +11,4 @@ exec/getStreamType/getStreamType
 exec/onvif/onvif_srvd
 go.mod
 go.sum
+.idea
