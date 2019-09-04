@@ -13,14 +13,14 @@ import (
 )
 
 type Worker struct {
-	Task    *Task  // task id must ge 1
+	Task *Task // task id must ge 1
 
 	// task about
 	Channel int // channel, port, etc
 
 	// onvif about
-	OnvifArgs    string
-	OnvifPid	int
+	OnvifArgs string
+	OnvifPid  int
 
 	// TNGVideoTool
 	TNGArgs        string
@@ -49,7 +49,7 @@ var (
 )
 
 func initProcess() {
-	workers = make([]*Worker, 0, PROCESSES_PER_GPU * GPU_COUNT)
+	workers = make([]*Worker, 0, PROCESSES_PER_GPU*GPU_COUNT)
 	for i := 0; i < cap(workers); i++ {
 		workers = append(workers, nil)
 	}
@@ -207,7 +207,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	text += fmt.Sprintf("-i '%s' ", t.RTSPAddr)
 	text += "-f rtsp "
 	text += fmt.Sprintf("-rtsp_transport %s ", "tcp")
-	text += fmt.Sprintf("-g %d ", (*t.GOP) * (*t.FPS))
+	text += fmt.Sprintf("-g %d ", (*t.GOP)*(*t.FPS))
 	text += fmt.Sprintf("-b:v %s ", t.BitRateV)
 	text += "-zerolatency 1 "
 
@@ -220,8 +220,7 @@ func (w *Worker) initTNGVideoToolArgs() {
 	text += fmt.Sprintf("-gpu %d ", w.GPU)
 	text += "-acodec aac "
 	text += fmt.Sprintf("-b:a %s ", t.BitRateA)
-	text += fmt.Sprintf("rtsp://127.0.0.1/%d", *t.Channel)
-
+	text += fmt.Sprintf("rtsp://%s/%d", LocalNet().IP, *t.Channel)
 
 	w.TNGArgs = text
 }
